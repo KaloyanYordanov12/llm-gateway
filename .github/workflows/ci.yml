@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # A single command runs tests + JaCoCo + Checkstyle + SpotBugs and
+      # generates the PIT report. GitHub-hosted runners provide Docker, which
+      # later phases use for Testcontainers.
+      - name: Build and verify
+        run: ./mvnw -B -ntp verify
