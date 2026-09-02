@@ -37,6 +37,17 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--
+          Spring Boot 4 extracted the MockMvc test slice (@AutoConfigureMockMvc,
+          @WebMvcTest) out of spring-boot-starter-test into this dedicated,
+          BOM-managed starter. Same first-party testing capability as Boot 3, new
+          module coordinates. Version is managed by the Spring Boot parent BOM.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

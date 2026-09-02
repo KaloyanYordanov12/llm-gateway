@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: llm-gateway
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Phase 0: only the health endpoint is exposed.
+        include: health
+  endpoint:
+    health:
+      show-details: never
