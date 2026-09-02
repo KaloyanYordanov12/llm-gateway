@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    image: llm-gateway:0.0.1-SNAPSHOT
+    ports:
+      - "8080:8080"
+    # NOTE (Phase 0): the app does NOT connect to Postgres yet — there is no
+    # datasource on the classpath. Postgres is declared below so that Phase 1
+    # (Flyway migrations + persistence) can wire in with no compose changes.
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17.5
+    environment:
+      POSTGRES_USER: gateway
+      POSTGRES_PASSWORD: gateway
+      POSTGRES_DB: gateway
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
