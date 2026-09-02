@@ -1,0 +1,21 @@
+# <type>(<optional scope>): <short summary>   ── max ~72 chars, imperative mood
+#
+# <blank line>
+# <optional body: what & why, wrapped at ~72 chars>
+#
+# <blank line>
+# <optional footer: BREAKING CHANGE: ..., or issue refs>
+#
+# ── Conventional Commits ────────────────────────────────────────────────
+# type:  feat     new feature
+#        fix      bug fix
+#        docs     documentation only
+#        style    formatting; no code-behavior change
+#        refactor code change that neither fixes a bug nor adds a feature
+#        perf     performance improvement
+#        test     add or correct tests
+#        build    build system, dependencies, packaging
+#        ci       CI configuration
+#        chore    maintenance; no src/test change
+#
+# Do NOT add Co-Authored-By or "Generated with" trailers.
