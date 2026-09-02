@@ -1,0 +1,15 @@
+# Normalize line endings to LF in the repo; check out native on Windows.
+* text=auto eol=lf
+
+# Windows batch / cmd scripts must stay CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Shell scripts and the Maven wrapper must stay LF.
+*.sh text eol=lf
+mvnw text eol=lf
+
+# Binary
+*.jar binary
+*.png binary
+*.zip binary
