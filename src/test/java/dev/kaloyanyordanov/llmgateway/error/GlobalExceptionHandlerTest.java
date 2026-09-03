@@ -2,6 +2,7 @@ package dev.kaloyanyordanov.llmgateway.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.kaloyanyordanov.llmgateway.provider.AllProvidersUnavailableException;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -25,6 +26,17 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().type()).isEqualTo("error");
+        assertThat(response.getBody().error().type()).isEqualTo("overloaded_error");
+        assertThat(response.getBody().requestId()).isNotBlank();
+    }
+
+    @Test
+    void allProvidersUnavailableMapsToServiceUnavailableEnvelope() {
+        ResponseEntity<ApiError> response = handler.handleAllProvidersUnavailable(
+                new AllProvidersUnavailableException(new RuntimeException("down")));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().error().type()).isEqualTo("overloaded_error");
         assertThat(response.getBody().requestId()).isNotBlank();
     }

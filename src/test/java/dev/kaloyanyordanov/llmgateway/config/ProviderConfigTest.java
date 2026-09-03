@@ -1,7 +1,9 @@
 package dev.kaloyanyordanov.llmgateway.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.kaloyanyordanov.llmgateway.provider.FailoverProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderMode;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
@@ -18,9 +20,19 @@ class ProviderConfigTest {
     private final ProviderConfig config = new ProviderConfig();
 
     private static ProviderProperties properties(ProviderMode mode) {
+        return properties(mode, List.of());
+    }
+
+    private static ProviderProperties properties(ProviderMode mode, List<String> chain) {
         return new ProviderProperties(
-                mode, List.of(), "anthropic", "http://localhost:8089", "test-provider-key", "2023-06-01",
+                mode, chain, "anthropic", "http://localhost:8089", "test-provider-key", "2023-06-01",
                 new ProviderProperties.OpenAi("openai", "http://localhost:8090", "test-openai-key"));
+    }
+
+    private ProviderClient openai(ProviderProperties properties) {
+        return config.openAiProviderClient(
+                properties, config.openAiRestClient(properties, RestClient.builder()),
+                CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults());
     }
 
     private ProviderClient anthropic(ProviderProperties properties) {
@@ -65,6 +77,25 @@ class ProviderConfigTest {
         ProviderRegistry registry = config.providerRegistry(List.of(anthropic, stub), properties);
 
         assertThat(registry.getDefault()).isSameAs(stub);
+    }
+
+    @Test
+    void liveChainMakesFailoverTheDefault() {
+        ProviderProperties properties = properties(ProviderMode.LIVE, List.of("anthropic", "openai"));
+        ProviderRegistry registry = config.providerRegistry(
+                List.of(anthropic(properties), openai(properties), config.stubProviderClient()), properties);
+
+        assertThat(registry.getDefault()).isInstanceOf(FailoverProviderClient.class);
+        assertThat(registry.getDefault().name()).isEqualTo("failover");
+    }
+
+    @Test
+    void unknownProviderInChainFailsFast() {
+        ProviderProperties properties = properties(ProviderMode.LIVE, List.of("anthropic", "ghost"));
+
+        assertThatThrownBy(() -> config.providerRegistry(List.of(anthropic(properties)), properties))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ghost");
     }
 
     @Test

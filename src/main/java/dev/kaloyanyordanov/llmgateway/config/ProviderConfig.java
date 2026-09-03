@@ -1,7 +1,9 @@
 package dev.kaloyanyordanov.llmgateway.config;
 
 import dev.kaloyanyordanov.llmgateway.provider.AnthropicProviderClient;
+import dev.kaloyanyordanov.llmgateway.provider.FailoverProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
+import dev.kaloyanyordanov.llmgateway.provider.ProviderMode;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderRegistry;
 import dev.kaloyanyordanov.llmgateway.provider.ResilientProviderClient;
@@ -12,7 +14,10 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.net.http.HttpClient;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,7 +69,40 @@ public class ProviderConfig {
 
     @Bean
     public ProviderRegistry providerRegistry(List<ProviderClient> providers, ProviderProperties properties) {
+        // Live mode with a configured chain routes the default through a failover
+        // client; otherwise the default is a single provider (v1 behavior).
+        if (properties.mode() == ProviderMode.LIVE && !properties.chain().isEmpty()) {
+            FailoverProviderClient failover = buildFailover(properties.chain(), providers);
+            List<ProviderClient> all = new ArrayList<>(providers);
+            all.add(failover);
+            return new ProviderRegistry(all, FailoverProviderClient.FAILOVER_NAME);
+        }
         return new ProviderRegistry(providers, resolveDefaultProviderName(properties));
+    }
+
+    /**
+     * Builds the failover chain from provider names, in order. Fail-secure: an
+     * unknown name fails startup rather than being silently skipped.
+     *
+     * @param chain     ordered provider names
+     * @param providers all registered providers
+     * @return the failover client wrapping the resolved chain
+     */
+    private static FailoverProviderClient buildFailover(List<String> chain, List<ProviderClient> providers) {
+        Map<String, ProviderClient> byName = new LinkedHashMap<>();
+        for (ProviderClient provider : providers) {
+            byName.put(provider.name(), provider);
+        }
+        List<ProviderClient> ordered = new ArrayList<>();
+        for (String providerName : chain) {
+            ProviderClient provider = byName.get(providerName);
+            if (provider == null) {
+                throw new IllegalStateException(
+                        "Unknown provider in gateway.provider.chain: " + providerName);
+            }
+            ordered.add(provider);
+        }
+        return new FailoverProviderClient(ordered);
     }
 
     /**

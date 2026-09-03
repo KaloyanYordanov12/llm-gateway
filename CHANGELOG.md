@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v2.1 — Second provider + live failover.** An `OpenAiProviderClient` adapter
+  (translating the gateway's normalized shape to/from OpenAI chat-completions,
+  resilience-wrapped like the Anthropic client) and a `FailoverProviderClient`
+  that fails over across a config-driven ordered chain (`gateway.provider.chain`).
+  When the primary's circuit is open or it fails after retries (5xx/transport),
+  traffic transparently moves to the secondary; a 4xx propagates unchanged; both
+  down → a clean `503`. An empty chain preserves v1 single-provider behavior, and
+  an unknown provider name in the chain fails startup (fail-secure). Proven
+  end-to-end against two WireMock providers.
 - **Pre-deploy — CI Docker build + GHCR publish.** A separate `docker` CI job
   (`needs: build`) builds the image on GitHub runners so a Docker-only breakage
   can't slip past — build-only on pull requests, and on pushes to `main` it also

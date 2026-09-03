@@ -1,5 +1,6 @@
 package dev.kaloyanyordanov.llmgateway.error;
 
+import dev.kaloyanyordanov.llmgateway.provider.AllProvidersUnavailableException;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleCircuitOpen(CallNotPermittedException ex) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ApiErrors.of(OVERLOADED_ERROR, "Provider temporarily unavailable"));
+    }
+
+    @ExceptionHandler(AllProvidersUnavailableException.class)
+    public ResponseEntity<ApiError> handleAllProvidersUnavailable(AllProvidersUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiErrors.of(OVERLOADED_ERROR, "All providers are currently unavailable"));
     }
 
     @ExceptionHandler(RestClientException.class)
