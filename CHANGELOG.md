@@ -126,6 +126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docs — README rewritten** for the shipped, deployed state: live demo link,
   honest demo-mode/$0 framing, architecture, correctness invariants, real gate
   thresholds, CI/GHCR, and configuration (replacing the frozen Phase 0 content).
+- **Docs — README documents v2** (failover, per-model routing, SSE streaming),
+  including the noted streaming-failover scope boundary.
 
 ### Notes
 

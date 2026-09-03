@@ -4,11 +4,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 An Anthropic-compatible LLM gateway: a single self-hosted service that sits in
-front of an LLM provider and adds the operational layer you actually need in
+front of LLM providers and adds the operational layer you actually need in
 production. Clients call it with an `x-api-key`; it authenticates them,
-rate-limits per client, serves responses from a cache, proxies to the provider
-through retry + a circuit breaker, and records token usage and cost. A read-only
-admin API and a bundled dashboard expose the numbers.
+rate-limits per client, serves responses from a cache, and proxies to a provider
+behind retry + a circuit breaker — with **automatic failover across a provider
+chain, config-driven per-model routing, and opt-in SSE streaming** — while
+recording token usage and cost. A read-only admin API and a bundled dashboard
+expose the numbers.
 
 Built with Java 25 and Spring Boot 4.1.1, correctness enforced by an
 un-cheatable `mvnw verify` (coverage, mutation, static analysis), containerized,
@@ -49,9 +51,11 @@ flowchart LR
 ```
 
 Requests enter through servlet filters (auth → rate limit), reach the proxy,
-which checks the cache and, on a miss, calls the provider behind Resilience4j
-retry + circuit breaker. Billable calls are priced and persisted to Postgres. The
-admin API reads those records; the React dashboard is a read-only view over it.
+which checks the cache and, on a miss, routes to a provider behind Resilience4j
+retry + circuit breaker — failing over across the provider chain when one is
+unhealthy. Billable calls are priced and persisted to Postgres. The admin API
+reads those records; the React dashboard is a read-only view over it. A
+`stream:true` request is served as SSE (see [v2 capabilities](#v2-capabilities)).
 
 ## Why it's correct
 
@@ -79,6 +83,34 @@ Provider HTTP is stubbed with WireMock and Postgres runs under Testcontainers, s
 these are real integration tests — nothing that should be integration-tested is
 mocked away.
 
+## v2 capabilities
+
+Three capabilities layered on the v1 core, each proven with the same gated tests.
+
+- **Provider failover.** Providers form an ordered chain (`gateway.provider.chain`,
+  e.g. Anthropic → OpenAI). When the primary's circuit is open or it fails after
+  retries (5xx / transport), traffic moves to the secondary **transparently** — a
+  client error (4xx) is the caller's fault and propagates unchanged, and if every
+  provider is down the client gets a clean `503`, never a hang. Proven end-to-end
+  against two stubbed providers. A second `OpenAiProviderClient` adapter translates
+  the gateway's normalized shape to/from OpenAI's chat-completions format.
+- **Per-model routing.** Config-driven rules (`gateway.routing.rules`) map a logical
+  model to an ordered list of concrete `(provider, model)` targets, with ordered
+  fallback and optional cost-preference ordering — **adding a rule is
+  configuration, not code**. The resolver is pure and deterministic (unit-tested in
+  isolation). v1 is preserved: with no rules a request goes to the default provider
+  unchanged, an unknown/unpriced model still fails `400` (the pricing allowlist
+  governs billability), and billing stays on the client's logical model.
+- **Streaming (SSE).** Opt-in via `stream:true`. The gateway reads the provider's
+  server-sent-events stream **line-by-line and re-emits it token-by-token** to the
+  client via a Spring `SseEmitter`, built on blocking + virtual threads (no reactive
+  model), while still accounting tokens and cost. On clean completion the assembled
+  response is cached (so a later identical request — even non-streamed — is a hit,
+  replayed from cache); a stream that aborts mid-way records a **partial usage row
+  flagged incomplete** and caches nothing, so spend is never lost or double-counted.
+  The `stream` flag is excluded from the cache key, and the non-streaming path is
+  byte-for-byte unchanged.
+
 ## Correctness / gates
 
 A single `./mvnw verify` compiles, runs every test, and fails the build unless all
@@ -91,7 +123,7 @@ of these hold. The same command runs in CI on every push and pull request.
 | Static analysis | Checkstyle | 0 violations | fails `mvnw verify` |
 | Static analysis | SpotBugs | 0 findings (effort=max, threshold=low) | fails `mvnw verify` |
 
-113 tests, all green. Thresholds are read straight from `pom.xml`; they ratchet
+169 tests, all green. Thresholds are read straight from `pom.xml`; they ratchet
 up, never down.
 
 > **PIT note:** mutation testing is *enforced from Phase 1* (the first phase with
@@ -137,9 +169,22 @@ or image** — the values below are placeholders.
 a public box is spend-proof; `live` is the fail-secure default and an unrecognized
 value fails startup rather than guessing.
 
+The v2 provider chain, secondary provider, and routing rules are additive
+configuration (application config; empty/absent keys preserve v1 behavior):
+
+- `gateway.provider.chain` — ordered failover chain of provider names,
+  e.g. `[anthropic, openai]`. Empty = single provider.
+- `gateway.provider.openai.base-url` / `gateway.provider.openai.api-key` —
+  secondary (OpenAI) provider settings. The key is a placeholder; supply a real one
+  via env in production, never in the repo.
+- `gateway.routing.rules` — a list of per-model routing rules (logical model →
+  ordered `(provider, model)` targets, optional cost-preference).
+
 ## API surface
 
 - `POST /v1/messages` — Anthropic-compatible proxy; authenticated with `x-api-key`.
+  Add `"stream": true` to the body for a streamed (SSE) response; omit it for the
+  standard JSON response.
 - `GET /api/clients` · `GET /api/usage?client=<id>` · `GET /api/stats` — read-only
   admin API, authenticated with `x-admin-key`. Never exposes key hashes.
 - `GET /actuator/health` — liveness/readiness.
@@ -147,9 +192,19 @@ value fails startup rather than guessing.
 ## Stack
 
 Java 25 (Temurin) · Spring Boot 4.1.1 · Maven · PostgreSQL + Flyway migrations ·
-Resilience4j (retry + circuit breaker) · Caffeine cache · React/Vite dashboard
-built into the jar. Production runs the jar under systemd; a multi-stage Docker
-image is also built and published to GHCR as a reproducible artifact.
+Resilience4j (retry + circuit breaker) · Caffeine cache · SSE streaming via Spring
+`SseEmitter` + the JDK `HttpClient` (blocking + virtual threads) · React/Vite
+dashboard built into the jar. Production runs the jar under systemd; a multi-stage
+Docker image is also built and published to GHCR as a reproducible artifact.
+
+## Roadmap / known limitations
+
+- **Streaming failover across providers is not yet implemented.** Non-streaming
+  failover is fully live, and streaming works — but switching providers *mid-stream*
+  (transparently continuing a streamed response on a second provider after the first
+  fails partway through) is a deliberate scope boundary, not an omission: the two
+  providers' streaming formats differ, so it's a noted future enhancement. A
+  pre-first-byte streaming failure surfaces cleanly to the client.
 
 ## Development
 
