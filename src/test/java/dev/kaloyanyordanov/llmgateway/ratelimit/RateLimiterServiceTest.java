@@ -26,6 +26,18 @@ class RateLimiterServiceTest {
     }
 
     @Test
+    void countsRejectionsWhenOverLimit() {
+        MutableClock clock = new MutableClock(START);
+        RateLimiterService service = serviceWithCapacity(1, clock);
+
+        assertThat(service.tryAcquire(1L)).isTrue();
+        assertThat(service.tryAcquire(1L)).isFalse();
+        assertThat(service.tryAcquire(1L)).isFalse();
+
+        assertThat(service.rejectionCount()).isEqualTo(2);
+    }
+
+    @Test
     void clientsAreIsolatedFromEachOther() {
         MutableClock clock = new MutableClock(START);
         RateLimiterService service = serviceWithCapacity(1, clock);

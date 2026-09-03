@@ -48,6 +48,20 @@ class UsageServiceTest {
     }
 
     @Test
+    void overallTotalsSumAcrossAllClients() {
+        when(repository.findAll()).thenReturn(List.of(
+                new UsageRecord(1L, "m", 10, 3, new BigDecimal("0.05")),
+                new UsageRecord(2L, "m", 20, 7, new BigDecimal("0.15"))));
+
+        UsageTotals totals = service.overallTotals();
+
+        assertThat(totals.clientId()).isNull();
+        assertThat(totals.totalInputTokens()).isEqualTo(30);
+        assertThat(totals.totalCost()).isEqualByComparingTo("0.20");
+        assertThat(totals.requestCount()).isEqualTo(2);
+    }
+
+    @Test
     void totalsForClientWithNoUsageAreZero() {
         when(repository.findByClientId(9L)).thenReturn(List.of());
 

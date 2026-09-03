@@ -36,7 +36,17 @@ public class UsageService {
      * @return exact summed totals for the client (zeros if none)
      */
     public UsageTotals totalsForClient(Long clientId) {
-        List<UsageRecord> records = repository.findByClientId(clientId);
+        return totals(clientId, repository.findByClientId(clientId));
+    }
+
+    /**
+     * @return exact summed totals across all clients ({@code clientId} is null)
+     */
+    public UsageTotals overallTotals() {
+        return totals(null, repository.findAll());
+    }
+
+    private static UsageTotals totals(Long clientId, List<UsageRecord> records) {
         long inputTokens = records.stream().mapToLong(UsageRecord::getInputTokens).sum();
         long outputTokens = records.stream().mapToLong(UsageRecord::getOutputTokens).sum();
         BigDecimal cost = records.stream()

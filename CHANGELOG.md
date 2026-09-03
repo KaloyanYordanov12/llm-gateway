@@ -62,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Testcontainers). Usage is recorded once per billable (non-cached) call, so
   per-client totals sum exactly and never double-count.
 
+- **Phase 6 — Management API.** Admin-key-guarded (`x-admin-key`, from
+  `gateway.admin.key`; constant-time comparison), read-only endpoints:
+  `GET /api/clients` (never exposes key hashes), `GET /api/usage?client=…`
+  (per-client totals), and `GET /api/stats` (aggregate requests, spend, tokens,
+  cache hit/miss, rate-limit rejections). A client `x-api-key` cannot reach
+  `/api/*`.
+
 ### Notes
 
 - **Cache hits on non-zero-temperature requests return a prior completion.** The
