@@ -55,10 +55,12 @@
         <module name="RedundantImport"/>
         <module name="UnusedImports"/>
         <module name="CustomImportOrder">
+            <!-- Google-style: static imports first (own group), then all other
+                 imports in a single ASCII-sorted group (java, jakarta, org, ...). -->
             <property name="sortImportsInGroupAlphabetically" value="true"/>
             <property name="separateLineBetweenGroups" value="true"/>
             <property name="customImportOrderRules"
-                      value="STATIC###STANDARD_JAVA_PACKAGE"/>
+                      value="STATIC###THIRD_PARTY_PACKAGE"/>
         </module>
 
         <!-- Whitespace -->

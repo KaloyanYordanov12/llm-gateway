@@ -32,9 +32,55 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Persistence (§A2): JPA is the locked choice over raw JDBC. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Flyway (§A2): SQL-first, forward-only migrations.
+             spring-boot-flyway carries Boot 4's Flyway auto-configuration, which
+             was split out of the core autoconfigure module (a first-party Boot-4
+             re-modularization, pre-approved under §A2). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Testcontainers (§A2): real Postgres for integration tests. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Testcontainers 2.x renamed modules: postgresql -> testcontainers-postgresql,
+             junit-jupiter -> testcontainers-junit-jupiter. Versions managed by the
+             Spring Boot BOM (testcontainers-bom 2.0.x). -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <!--
@@ -80,7 +126,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <!-- user.timezone=UTC: deterministic tests, and avoids the
+                         Postgres 17 JDBC rejection of deprecated tz aliases
+                         (e.g. the host's "Europe/Kiev", renamed to "Europe/Kyiv"). -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
                 </configuration>
             </plugin>
 

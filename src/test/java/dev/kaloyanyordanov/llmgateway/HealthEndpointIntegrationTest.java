@@ -7,16 +7,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * End-to-end smoke test: proves the web layer and the test harness run together
- * by hitting the actuator health endpoint. No business logic under test yet.
+ * End-to-end smoke test: proves the web layer, Flyway migrations, and the
+ * Testcontainers Postgres harness all boot together. The health endpoint is
+ * {@code UP} only if the datasource is healthy too.
  */
-@SpringBootTest
 @AutoConfigureMockMvc
-class HealthEndpointIntegrationTest {
+class HealthEndpointIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

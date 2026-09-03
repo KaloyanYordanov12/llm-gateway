@@ -6,6 +6,18 @@ spring:
     # stop_sequences); use it globally so DTOs stay idiomatic camelCase in Java.
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null
+  datasource:
+    # Safe local/compose defaults; overridable via env. No real secret needed.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gateway}
+    username: ${DB_USER:gateway}
+    password: ${DB_PASSWORD:gateway}
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate only validates entities against it.
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
 
 management:
   endpoints:

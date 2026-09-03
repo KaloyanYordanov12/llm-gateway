@@ -10,10 +10,13 @@ COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 RUN chmod +x mvnw && ./mvnw -B -ntp dependency:go-offline
 
-# Now copy sources and build. `package` runs the unit/integration tests in the
-# build stage (per the runtime-image decision: tests run here, not at runtime).
+# Now copy sources and build the jar. Tests are skipped HERE deliberately: from
+# Phase 1 on, the suite uses Testcontainers, which needs a Docker daemon not
+# available inside an image build. The full gate set (tests + JaCoCo + PIT +
+# Checkstyle + SpotBugs) runs via `./mvnw verify` locally and in CI, which is the
+# source of truth for correctness; this stage only produces the deployable jar.
 COPY src/ src/
-RUN ./mvnw -B -ntp package
+RUN ./mvnw -B -ntp package -DskipTests
 
 # ---- Runtime stage: slim JRE, non-root ----
 FROM eclipse-temurin:25-jre AS runtime
