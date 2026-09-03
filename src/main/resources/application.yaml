@@ -19,6 +19,19 @@ spring:
   flyway:
     enabled: true
 
+# Gateway configuration. The pricing table doubles as the model allowlist:
+# a model absent here is rejected with 400 (fail-secure). Rates are per 1,000
+# tokens; adjust to real provider pricing in production.
+gateway:
+  pricing:
+    models:
+      claude-3-5-sonnet-20241022:
+        input-per-1k: "0.003"
+        output-per-1k: "0.015"
+      claude-3-5-haiku-20241022:
+        input-per-1k: "0.0008"
+        output-per-1k: "0.004"
+
 management:
   endpoints:
     web:
