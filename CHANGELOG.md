@@ -69,6 +69,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cache hit/miss, rate-limit rejections). A client `x-api-key` cannot reach
   `/api/*`.
 
+- **Phase 7 — Dashboard.** A small React SPA (Vite) built by
+  `frontend-maven-plugin` into Spring's static resources during `mvnw verify`, so
+  one self-contained jar serves both the API and the UI. The "Gateway Console" is
+  a read-only telemetry view over the Phase 6 API (system requests/spend/cache-hit
+  rate/rate-limit rejections and a per-client table); it holds no business logic.
+  The app is also forced to run in UTC (`-Duser.timezone=UTC`) so it connects to
+  Postgres 17 regardless of host timezone.
+
 ### Notes
 
 - **Cache hits on non-zero-temperature requests return a prior completion.** The

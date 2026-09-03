@@ -21,6 +21,19 @@ curl http://localhost:8080/actuator/health
 # {"status":"UP"}
 ```
 
+## Dashboard
+
+A read-only telemetry console (React SPA) is built into the jar and served at the
+application root — open <http://localhost:8080/> and enter the admin key to see
+per-client requests, spend, cache-hit rate, and rate-limit rejections. It is a
+view over the admin API (`/api/*`); all correctness lives in the tested backend.
+
+## API surface
+
+- `POST /v1/messages` — Anthropic-compatible proxy; authenticated with `x-api-key`.
+- `GET /api/clients`, `GET /api/usage?client=…`, `GET /api/stats` — admin-only
+  (`x-admin-key`) read models for the dashboard.
+
 ## Build & test
 
 The Maven wrapper is committed, so no global Maven install is required:
