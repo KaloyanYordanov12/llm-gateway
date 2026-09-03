@@ -1,6 +1,11 @@
 spring:
   application:
     name: llm-gateway
+  jackson:
+    # Anthropic's wire shape is snake_case (request_id, max_tokens, top_p,
+    # stop_sequences); use it globally so DTOs stay idiomatic camelCase in Java.
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
 
 management:
   endpoints:

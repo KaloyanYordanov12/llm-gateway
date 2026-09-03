@@ -141,15 +141,16 @@
             </plugin>
 
             <!--
-              PIT mutation testing: PLUMBING ONLY in Phase 0. Intentionally NOT
-              bound to a lifecycle phase and NO mutationThreshold is set, so it
-              does not gate `mvn verify` yet. Run on demand with:
-                  ./mvnw org.pitest:pitest-maven:mutationCoverage
-              Rationale (documented exception to pre-flight §3): a health endpoint
-              has essentially no mutable logic, so a threshold here would be
-              vacuous. PIT enforcement (>=70%) switches on in Phase 2 (the rate
-              limiter — first real branching logic). This is the only gate
-              deferral in the project; see CHANGELOG.md.
+              PIT mutation testing: ENFORCING gate from Phase 1 (>=70%), bound to
+              verify. Phase 1 introduces the first real branching logic (auth), and
+              real logic should not sit un-mutation-tested. (This is one phase
+              earlier than the Phase-0 estimate — a tightening, permitted by
+              pre-flight §3 "ratchet up, never down".)
+              Integration/Spring-context tests (*IntegrationTest) are excluded from
+              PIT's test set: they spin Testcontainers/full contexts, which are slow
+              and non-deterministic under mutation analysis. Mutation coverage of
+              the logic is provided by fast unit tests; JaCoCo (not PIT) counts the
+              integration tests for line/branch coverage.
             -->
             <plugin>
                 <groupId>org.pitest</groupId>
@@ -173,16 +174,24 @@
                     <excludedClasses>
                         <param>dev.kaloyanyordanov.llmgateway.Application</param>
                     </excludedClasses>
+                    <excludedTestClasses>
+                        <param>*IntegrationTest</param>
+                    </excludedTestClasses>
                     <outputFormats>
                         <param>HTML</param>
                         <param>XML</param>
                     </outputFormats>
-                    <!-- Phase 0 only: with the bootstrap class excluded there is no
-                         mutable logic yet, so PIT would otherwise error with
-                         "No mutations found". This lets it run and emit a report.
-                         Irrelevant from Phase 2 on, where real logic exists. -->
-                    <failWhenNoMutations>false</failWhenNoMutations>
+                    <mutationThreshold>70</mutationThreshold>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>pit-mutation-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>mutationCoverage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Checkstyle: failing gate bound to verify (0 violations, severity=error). -->

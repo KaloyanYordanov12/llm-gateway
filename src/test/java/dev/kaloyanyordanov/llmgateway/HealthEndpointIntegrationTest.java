@@ -16,7 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-class HealthEndpointSmokeTest {
+class HealthEndpointIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
