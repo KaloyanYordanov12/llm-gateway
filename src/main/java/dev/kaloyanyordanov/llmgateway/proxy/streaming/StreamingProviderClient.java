@@ -45,13 +45,15 @@ public class StreamingProviderClient {
     }
 
     /**
-     * Streams a request, forwarding text deltas and returning the accumulated result.
+     * Streams a request, forwarding text deltas and updating the accumulator. On a
+     * pre-body failure it throws (before any delta), so the caller may fail over; a
+     * failure during the body leaves the accumulator holding the partial result.
      *
      * @param request     the streaming request (its {@code stream} flag should be true)
+     * @param accumulator the accumulator to update
      * @param onTextDelta called with each text delta as it arrives
-     * @return the accumulated {@link StreamResult}
      */
-    public StreamResult stream(MessagesRequest request, Consumer<String> onTextDelta) {
+    public void stream(MessagesRequest request, StreamAccumulator accumulator, Consumer<String> onTextDelta) {
         HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(baseUrl + MESSAGES_PATH))
                 .header("x-api-key", apiKey)
                 .header("anthropic-version", anthropicVersion)
@@ -71,7 +73,7 @@ public class StreamingProviderClient {
             throw new HttpClientErrorException(HttpStatus.valueOf(status));
         }
         try (Stream<String> lines = response.body()) {
-            return reader.read(lines, onTextDelta);
+            reader.read(lines, accumulator, onTextDelta);
         }
     }
 

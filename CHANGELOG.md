@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v2.3 — Streaming (SSE).** Opt-in via `stream:true` (excluded from the cache
+  key, so a streamed and non-streamed request for the same messages share a cache
+  entry). Blocking + virtual threads, not reactive: the JDK `HttpClient` reads the
+  upstream SSE line-by-line, forwarding each delta downstream via a Spring
+  `SseEmitter` while accumulating text + tokens. On clean completion usage is
+  recorded and the assembled result cached (so a later identical request — even
+  non-streamed — is a hit, replayed from cache); a mid-stream abort records a
+  **partial** usage row flagged incomplete and caches nothing, so spend is never
+  lost or double-counted. The non-streaming path is byte-for-byte unchanged. Usage
+  gains a `complete` flag (Flyway `V3`). All provider traffic (including streamed
+  responses) is stubbed with WireMock ($0).
 - **v2.2 — Per-model routing rules.** A pure, deterministic `ModelRouter` resolves
   a logical model to an ordered list of concrete (provider, upstream-model)
   targets from configuration (`gateway.routing.rules`) — logical→concrete mapping,

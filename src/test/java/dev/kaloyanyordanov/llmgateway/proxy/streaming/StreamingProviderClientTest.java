@@ -46,17 +46,18 @@ class StreamingProviderClientTest {
                 "data: {\"type\":\"message_stop\"}");
         doReturn(response(200, body)).when(httpClient).send(any(), any());
 
-        StreamResult result = client.stream(REQUEST, delta -> { });
+        StreamAccumulator accumulator = new StreamAccumulator();
+        client.stream(REQUEST, accumulator, delta -> { });
 
-        assertThat(result.content()).isEqualTo("hi");
-        assertThat(result.complete()).isTrue();
+        assertThat(accumulator.toResult().content()).isEqualTo("hi");
+        assertThat(accumulator.toResult().complete()).isTrue();
     }
 
     @Test
     void serverErrorThrowsFailoverTrigger() throws Exception {
         doReturn(response(503, Stream.of())).when(httpClient).send(any(), any());
 
-        assertThatThrownBy(() -> client.stream(REQUEST, delta -> { }))
+        assertThatThrownBy(() -> client.stream(REQUEST, new StreamAccumulator(), delta -> { }))
                 .isInstanceOf(HttpServerErrorException.class);
     }
 
@@ -64,7 +65,7 @@ class StreamingProviderClientTest {
     void clientErrorThrowsWithoutFailover() throws Exception {
         doReturn(response(400, Stream.of())).when(httpClient).send(any(), any());
 
-        assertThatThrownBy(() -> client.stream(REQUEST, delta -> { }))
+        assertThatThrownBy(() -> client.stream(REQUEST, new StreamAccumulator(), delta -> { }))
                 .isInstanceOf(HttpClientErrorException.class);
     }
 }

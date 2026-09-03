@@ -4,6 +4,8 @@ import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
 import dev.kaloyanyordanov.llmgateway.proxy.streaming.SseStreamReader;
 import dev.kaloyanyordanov.llmgateway.proxy.streaming.StreamingProviderClient;
 import java.net.http.HttpClient;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.json.JsonMapper;
@@ -26,5 +28,11 @@ public class StreamingConfig {
             SseStreamReader sseStreamReader, ProviderProperties properties, JsonMapper jsonMapper) {
         return new StreamingProviderClient(streamingHttpClient, sseStreamReader, jsonMapper,
                 properties.baseUrl(), properties.apiKey(), properties.anthropicVersion());
+    }
+
+    /** One virtual thread per streaming task — cheap, so no leaks on slow consumers. */
+    @Bean
+    public ExecutorService streamingExecutor() {
+        return Executors.newVirtualThreadPerTaskExecutor();
     }
 }

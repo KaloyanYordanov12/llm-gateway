@@ -23,20 +23,15 @@ public class SseStreamReader {
             .build();
 
     /**
-     * Reads the stream, forwarding each text delta and accumulating the result.
+     * Reads the stream, forwarding each text delta and updating the accumulator as
+     * events arrive. If reading throws part-way, the accumulator still holds what
+     * arrived so a partial result can be recovered.
      *
-     * @param lines        the upstream SSE lines
-     * @param onTextDelta  called with each text delta as it arrives (for downstream)
-     * @return the accumulated {@link StreamResult}
+     * @param lines       the upstream SSE lines
+     * @param accumulator the accumulator to update
+     * @param onTextDelta called with each text delta as it arrives (for downstream)
      */
-    public StreamResult read(Stream<String> lines, Consumer<String> onTextDelta) {
-        StringBuilder content = new StringBuilder();
-        String id = null;
-        String model = null;
-        int inputTokens = 0;
-        int outputTokens = 0;
-        boolean complete = false;
-
+    public void read(Stream<String> lines, StreamAccumulator accumulator, Consumer<String> onTextDelta) {
         Iterator<String> iterator = lines.iterator();
         while (iterator.hasNext()) {
             SseEvent event = parse(iterator.next());
@@ -47,30 +42,27 @@ public class SseStreamReader {
                 case "message_start" -> {
                     SseMessage message = event.message();
                     if (message != null) {
-                        id = message.id();
-                        model = message.model();
-                        inputTokens = tokensOr(message.usage() == null ? null : message.usage().inputTokens(),
-                                inputTokens);
+                        accumulator.start(message.id(), message.model(),
+                                tokensOr(message.usage() == null ? null : message.usage().inputTokens(), 0));
                     }
                 }
                 case "content_block_delta" -> {
                     if (event.delta() != null && event.delta().text() != null) {
-                        content.append(event.delta().text());
+                        accumulator.appendText(event.delta().text());
                         onTextDelta.accept(event.delta().text());
                     }
                 }
                 case "message_delta" -> {
-                    if (event.usage() != null) {
-                        outputTokens = tokensOr(event.usage().outputTokens(), outputTokens);
+                    if (event.usage() != null && event.usage().outputTokens() != null) {
+                        accumulator.outputTokens(event.usage().outputTokens());
                     }
                 }
-                case "message_stop" -> complete = true;
+                case "message_stop" -> accumulator.markComplete();
                 default -> {
                     // ignore unknown event types
                 }
             }
         }
-        return new StreamResult(id, model, content.toString(), inputTokens, outputTokens, complete);
     }
 
     private SseEvent parse(String line) {

@@ -62,7 +62,9 @@ class StreamingProviderIntegrationTest extends AbstractPostgresIntegrationTest {
                 .withBody(SSE_BODY)));
 
         List<String> deltas = new ArrayList<>();
-        StreamResult result = streamingProviderClient.stream(streamingRequest(), deltas::add);
+        StreamAccumulator accumulator = new StreamAccumulator();
+        streamingProviderClient.stream(streamingRequest(), accumulator, deltas::add);
+        StreamResult result = accumulator.toResult();
 
         assertThat(result.content()).isEqualTo("Hello world");
         assertThat(result.inputTokens()).isEqualTo(10);
@@ -75,7 +77,8 @@ class StreamingProviderIntegrationTest extends AbstractPostgresIntegrationTest {
     void serverErrorBeforeStreamBodyThrowsFailoverTrigger() {
         WIREMOCK.stubFor(post(urlEqualTo("/v1/messages")).willReturn(aResponse().withStatus(503)));
 
-        assertThatThrownBy(() -> streamingProviderClient.stream(streamingRequest(), delta -> { }))
+        assertThatThrownBy(() ->
+                streamingProviderClient.stream(streamingRequest(), new StreamAccumulator(), delta -> { }))
                 .isInstanceOf(HttpServerErrorException.class);
     }
 }

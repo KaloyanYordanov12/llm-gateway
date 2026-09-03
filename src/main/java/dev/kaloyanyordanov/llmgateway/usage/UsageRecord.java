@@ -39,8 +39,24 @@ public class UsageRecord {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private boolean complete;
+
     /** Required by JPA. */
     protected UsageRecord() {
+    }
+
+    /**
+     * Records a complete call.
+     *
+     * @param clientId     the client the usage is billed to
+     * @param model        the model used
+     * @param inputTokens  prompt tokens consumed
+     * @param outputTokens completion tokens produced
+     * @param cost         computed cost of the call
+     */
+    public UsageRecord(Long clientId, String model, int inputTokens, int outputTokens, BigDecimal cost) {
+        this(clientId, model, inputTokens, outputTokens, cost, true);
     }
 
     /**
@@ -49,13 +65,16 @@ public class UsageRecord {
      * @param inputTokens  prompt tokens consumed
      * @param outputTokens completion tokens produced
      * @param cost         computed cost of the call
+     * @param complete     whether the call completed (false for an aborted stream)
      */
-    public UsageRecord(Long clientId, String model, int inputTokens, int outputTokens, BigDecimal cost) {
+    public UsageRecord(Long clientId, String model, int inputTokens, int outputTokens, BigDecimal cost,
+            boolean complete) {
         this.clientId = clientId;
         this.model = model;
         this.inputTokens = inputTokens;
         this.outputTokens = outputTokens;
         this.cost = cost;
+        this.complete = complete;
     }
 
     public Long getId() {
@@ -84,6 +103,10 @@ public class UsageRecord {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public boolean isComplete() {
+        return complete;
     }
 
     @PrePersist

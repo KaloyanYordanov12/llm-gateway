@@ -21,11 +21,16 @@ class SseStreamReaderTest {
             "data: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":5}}";
     private static final String STOP = "data: {\"type\":\"message_stop\"}";
 
+    private StreamResult read(List<String> deltas, String... lines) {
+        StreamAccumulator accumulator = new StreamAccumulator();
+        reader.read(List.of(lines).stream(), accumulator, deltas::add);
+        return accumulator.toResult();
+    }
+
     @Test
     void assemblesCleanStreamWithTokensAndForwardsDeltas() {
         List<String> deltas = new ArrayList<>();
-        StreamResult result = reader.read(
-                List.of(START, DELTA_HELLO, DELTA_WORLD, MESSAGE_DELTA, STOP).stream(), deltas::add);
+        StreamResult result = read(deltas, START, DELTA_HELLO, DELTA_WORLD, MESSAGE_DELTA, STOP);
 
         assertThat(result.id()).isEqualTo("msg_1");
         assertThat(result.model()).isEqualTo("claude-x");
@@ -40,7 +45,7 @@ class SseStreamReaderTest {
     void truncatedStreamIsIncompleteButKeepsWhatArrived() {
         List<String> deltas = new ArrayList<>();
         // No message_delta, no message_stop — the stream aborted after one delta.
-        StreamResult result = reader.read(List.of(START, DELTA_HELLO).stream(), deltas::add);
+        StreamResult result = read(deltas, START, DELTA_HELLO);
 
         assertThat(result.content()).isEqualTo("Hello");
         assertThat(result.inputTokens()).isEqualTo(10);
@@ -52,14 +57,14 @@ class SseStreamReaderTest {
     @Test
     void ignoresNonDataCommentAndUnknownLines() {
         List<String> deltas = new ArrayList<>();
-        StreamResult result = reader.read(List.of(
+        StreamResult result = read(deltas,
                 "event: message_start",
                 ": this is a comment",
                 "",
                 START,
                 "data: {\"type\":\"ping\"}",
                 DELTA_HELLO,
-                STOP).stream(), deltas::add);
+                STOP);
 
         assertThat(result.content()).isEqualTo("Hello");
         assertThat(result.complete()).isTrue();

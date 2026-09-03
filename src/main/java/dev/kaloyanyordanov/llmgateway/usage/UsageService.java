@@ -28,7 +28,23 @@ public class UsageService {
      * @return the saved record
      */
     public UsageRecord record(Long clientId, String model, int inputTokens, int outputTokens, BigDecimal cost) {
-        return repository.save(new UsageRecord(clientId, model, inputTokens, outputTokens, cost));
+        return record(clientId, model, inputTokens, outputTokens, cost, true);
+    }
+
+    /**
+     * Persists a usage record, flagged complete or partial.
+     *
+     * @param clientId     billed client
+     * @param model        model used
+     * @param inputTokens  prompt tokens
+     * @param outputTokens completion tokens
+     * @param cost         computed cost
+     * @param complete     whether the call completed (false for an aborted stream)
+     * @return the saved record
+     */
+    public UsageRecord record(Long clientId, String model, int inputTokens, int outputTokens, BigDecimal cost,
+            boolean complete) {
+        return repository.save(new UsageRecord(clientId, model, inputTokens, outputTokens, cost, complete));
     }
 
     /**
