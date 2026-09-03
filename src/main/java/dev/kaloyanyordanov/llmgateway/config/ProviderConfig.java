@@ -4,6 +4,11 @@ import dev.kaloyanyordanov.llmgateway.provider.AnthropicProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderRegistry;
+import dev.kaloyanyordanov.llmgateway.provider.ResilientProviderClient;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.net.http.HttpClient;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -33,10 +38,14 @@ public class ProviderConfig {
     }
 
     @Bean
-    public AnthropicProviderClient anthropicProviderClient(
-            ProviderProperties properties, RestClient providerRestClient) {
-        return new AnthropicProviderClient(
+    public ProviderClient anthropicProviderClient(
+            ProviderProperties properties, RestClient providerRestClient,
+            CircuitBreakerRegistry circuitBreakerRegistry, RetryRegistry retryRegistry) {
+        AnthropicProviderClient delegate = new AnthropicProviderClient(
                 properties.name(), providerRestClient, properties.apiKey(), properties.anthropicVersion());
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(properties.name());
+        Retry retry = retryRegistry.retry(properties.name());
+        return new ResilientProviderClient(delegate, circuitBreaker, retry);
     }
 
     @Bean
