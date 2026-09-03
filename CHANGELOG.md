@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Pre-deploy — CI Docker build + GHCR publish.** A separate `docker` CI job
+  (`needs: build`) builds the image on GitHub runners so a Docker-only breakage
+  can't slip past — build-only on pull requests, and on pushes to `main` it also
+  publishes `ghcr.io/kaloyanyordanov12/llm-gateway` (tags `latest` + short SHA)
+  using the built-in `GITHUB_TOKEN` (`packages: write`). The image is a
+  portfolio/repro artifact; the production runtime stays jar-under-systemd.
 - **Pre-deploy — Demo-mode stub provider.** A `StubProviderClient` (name
   `stub`) that returns a canned response with a small plausible `Usage` and makes
   no network call, plus a `gateway.provider.mode` selector (`live` | `demo`,
