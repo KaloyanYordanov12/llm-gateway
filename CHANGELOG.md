@@ -48,7 +48,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   circuit-breaker state machine (closed → open → half-open → closed) is tested
   against simulated 5xx.
 
+- **Phase 4 — Response cache.** In-memory Caffeine cache keyed by the SHA-256 of
+  the canonical JSON over the locked field set, TTL configurable
+  (`gateway.cache.*`, default 1h), with hit/miss counters for the dashboard. The
+  proxy now serves cache hits without calling the provider. Non-zero-temperature
+  requests that hit the cache return a valid prior completion by design (see
+  Notes).
+
 ### Notes
+
+- **Cache hits on non-zero-temperature requests return a prior completion.** The
+  cache key includes `temperature`, so an identical repeated request (even with
+  `temperature > 0`) returns the previously sampled completion rather than
+  resampling. This is intentional, documented behaviour, not a bug.
 
 - **PIT mutation threshold now enforced from Phase 1 (≥70%), not Phase 2.** In
   Phase 0 the only logic was a health endpoint with no mutable branches, so a
