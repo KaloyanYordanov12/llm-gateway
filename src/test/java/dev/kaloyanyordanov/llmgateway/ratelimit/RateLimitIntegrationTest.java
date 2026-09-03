@@ -41,10 +41,14 @@ class RateLimitIntegrationTest extends AbstractPostgresIntegrationTest {
         clientRepository.save(new Client("acme", passwordEncoder.encode(VALID_KEY), true));
     }
 
+    private static final String BODY =
+            "{\"model\":\"claude-3-5-sonnet-20241022\","
+            + "\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":10}";
+
     private void authenticatedRequest(int expectedStatus) throws Exception {
         mockMvc.perform(post("/v1/messages")
                         .header(ApiKeyAuthFilter.API_KEY_HEADER, VALID_KEY)
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().is(expectedStatus));
     }
 

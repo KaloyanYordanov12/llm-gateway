@@ -13,6 +13,8 @@ import dev.kaloyanyordanov.llmgateway.AbstractPostgresIntegrationTest;
 import dev.kaloyanyordanov.llmgateway.auth.ApiKeyAuthFilter;
 import dev.kaloyanyordanov.llmgateway.auth.Client;
 import dev.kaloyanyordanov.llmgateway.auth.ClientRepository;
+import dev.kaloyanyordanov.llmgateway.usage.UsageRepository;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +50,12 @@ class ProxyIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private UsageRepository usageRepository;
+
     @BeforeEach
     void setUp() {
         WIREMOCK.resetAll();
-        clientRepository.deleteAll();
         clientRepository.save(new Client("acme", passwordEncoder.encode(VALID_KEY), true));
     }
 
@@ -69,7 +73,8 @@ class ProxyIntegrationTest extends AbstractPostgresIntegrationTest {
                 }""")));
 
         String requestBody = """
-                {"model":"claude-x","messages":[{"role":"user","content":"hi"}],"max_tokens":100}""";
+                {"model":"claude-3-5-sonnet-20241022",
+                 "messages":[{"role":"user","content":"hi"}],"max_tokens":100}""";
 
         mockMvc.perform(post("/v1/messages")
                         .header(ApiKeyAuthFilter.API_KEY_HEADER, VALID_KEY)
@@ -80,5 +85,12 @@ class ProxyIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(jsonPath("$.content").value("Proxied hello"))
                 .andExpect(jsonPath("$.usage.input_tokens").value(9))
                 .andExpect(jsonPath("$.usage.output_tokens").value(4));
+
+        // A billable call was recorded for the client.
+        Assertions.assertThat(usageRepository.findAll()).hasSize(1)
+                .allSatisfy(record -> {
+                    Assertions.assertThat(record.getInputTokens()).isEqualTo(9);
+                    Assertions.assertThat(record.getOutputTokens()).isEqualTo(4);
+                });
     }
 }

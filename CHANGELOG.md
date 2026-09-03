@@ -55,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requests that hit the cache return a valid prior completion by design (see
   Notes).
 
+- **Phase 5 — Usage + cost accounting.** Config-driven pricing table
+  (`gateway.pricing.*`) that doubles as the model allowlist — an unknown model is
+  rejected with `400` (fail-secure). Token counts are parsed from the provider
+  response, priced, and persisted per client (Flyway `V2__usage.sql`,
+  Testcontainers). Usage is recorded once per billable (non-cached) call, so
+  per-client totals sum exactly and never double-count.
+
 ### Notes
 
 - **Cache hits on non-zero-temperature requests return a prior completion.** The

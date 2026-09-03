@@ -14,6 +14,8 @@ import dev.kaloyanyordanov.llmgateway.AbstractPostgresIntegrationTest;
 import dev.kaloyanyordanov.llmgateway.auth.ApiKeyAuthFilter;
 import dev.kaloyanyordanov.llmgateway.auth.Client;
 import dev.kaloyanyordanov.llmgateway.auth.ClientRepository;
+import dev.kaloyanyordanov.llmgateway.usage.UsageRepository;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +31,8 @@ class CacheIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String VALID_KEY = "secret-key";
     private static final String BODY =
-            "{\"model\":\"claude-x\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":100}";
+            "{\"model\":\"claude-3-5-sonnet-20241022\","
+            + "\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":100}";
 
     private static final WireMockServer WIREMOCK = new WireMockServer(options().dynamicPort());
 
@@ -51,10 +54,12 @@ class CacheIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private UsageRepository usageRepository;
+
     @BeforeEach
     void setUp() {
         WIREMOCK.resetAll();
-        clientRepository.deleteAll();
         clientRepository.save(new Client("acme", passwordEncoder.encode(VALID_KEY), true));
     }
 
@@ -76,7 +81,9 @@ class CacheIntegrationTest extends AbstractPostgresIntegrationTest {
         sendIdenticalRequest();
         sendIdenticalRequest();
 
-        // Second request is served from cache: the provider is called only once.
+        // Second request is served from cache: the provider is called only once,
+        // and usage is recorded exactly once (no double-counting on cache hits).
         WIREMOCK.verify(1, postRequestedFor(urlEqualTo("/v1/messages")));
+        Assertions.assertThat(usageRepository.findAll()).hasSize(1);
     }
 }

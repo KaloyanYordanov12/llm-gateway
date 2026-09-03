@@ -2,6 +2,7 @@ package dev.kaloyanyordanov.llmgateway.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,16 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().type()).isEqualTo("error");
         assertThat(response.getBody().error().type()).isEqualTo("overloaded_error");
         assertThat(response.getBody().requestId()).isNotBlank();
+    }
+
+    @Test
+    void unknownModelMapsToBadRequestEnvelope() {
+        ResponseEntity<ApiError> response = handler.handleUnknownModel(new UnknownModelException("nope"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().error().type()).isEqualTo("invalid_request_error");
+        assertThat(response.getBody().error().message()).contains("nope");
     }
 
     @Test

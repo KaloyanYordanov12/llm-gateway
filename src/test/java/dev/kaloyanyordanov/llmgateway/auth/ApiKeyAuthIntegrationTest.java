@@ -54,12 +54,16 @@ class ApiKeyAuthIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void validKeyPassesAuthentication() throws Exception {
-        // A valid key passes auth + rate limiting and reaches the proxy handler,
-        // which then fails at the (intentionally unreachable) provider with 5xx.
-        // The point of this test is only that it is NOT 401.
+        // A valid key + a priced model passes auth, rate limiting and model
+        // validation, reaching the proxy handler, which then fails at the
+        // (intentionally unreachable) provider with 5xx. The point of this test is
+        // only that it is NOT 401.
+        String body =
+                "{\"model\":\"claude-3-5-sonnet-20241022\","
+                + "\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":10}";
         mockMvc.perform(post("/v1/messages")
                         .header(ApiKeyAuthFilter.API_KEY_HEADER, VALID_KEY)
-                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().is5xxServerError());
     }
 
