@@ -42,6 +42,11 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Caffeine (§A2): in-memory response cache. Version managed by Boot BOM. -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
         <!-- bcrypt (§A2): BCryptPasswordEncoder without a full security starter. -->
         <dependency>
             <groupId>org.springframework.security</groupId>
