@@ -91,6 +91,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The app is also forced to run in UTC (`-Duser.timezone=UTC`) so it connects to
   Postgres 17 regardless of host timezone.
 
+### Changed
+
+- **Docs — README rewritten** for the shipped, deployed state: live demo link,
+  honest demo-mode/$0 framing, architecture, correctness invariants, real gate
+  thresholds, CI/GHCR, and configuration (replacing the frozen Phase 0 content).
+
 ### Notes
 
 - **Cache hits on non-zero-temperature requests return a prior completion.** The
