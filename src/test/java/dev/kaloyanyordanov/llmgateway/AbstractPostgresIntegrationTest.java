@@ -1,22 +1,33 @@
 package dev.kaloyanyordanov.llmgateway;
 
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Base class for full-context integration tests. Boots a real Postgres via
- * Testcontainers and wires it in with {@code @ServiceConnection}, so Flyway runs
- * the real migrations and JPA talks to a real database. The container is static
- * and shared across all subclasses in the JVM.
+ * Base class for full-context integration tests. Uses the Testcontainers
+ * singleton pattern: one Postgres container is started once and reused across
+ * every subclass in the JVM (Ryuk tears it down at JVM exit). This avoids the
+ * per-class start/stop lifecycle of {@code @Testcontainers}, which would stop a
+ * shared static container after the first test class and break the rest.
+ *
+ * <p>Flyway runs the real migrations against this container and JPA talks to a
+ * real database, exactly as in production.</p>
  */
 @SpringBootTest
-@Testcontainers
 public abstract class AbstractPostgresIntegrationTest {
 
-    @Container
-    @ServiceConnection
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17.5");
+
+    static {
+        POSTGRES.start();
+    }
+
+    @DynamicPropertySource
+    static void datasourceProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+    }
 }

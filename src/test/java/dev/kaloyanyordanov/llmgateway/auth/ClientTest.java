@@ -18,6 +18,12 @@ class ClientTest {
     }
 
     @Test
+    void enabledFlagReflectsConstructor() {
+        assertThat(new Client("a", "h", false).isEnabled()).isFalse();
+        assertThat(new Client("a", "h", true).isEnabled()).isTrue();
+    }
+
+    @Test
     void prePersistSetsCreatedAndUpdatedToSameInstant() {
         Client client = new Client("acme", "hash", true);
 

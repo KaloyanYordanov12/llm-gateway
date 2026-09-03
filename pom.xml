@@ -42,6 +42,11 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- bcrypt (§A2): BCryptPasswordEncoder without a full security starter. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
         <!-- Flyway (§A2): SQL-first, forward-only migrations.
              spring-boot-flyway carries Boot 4's Flyway auto-configuration, which
              was split out of the core autoconfigure module (a first-party Boot-4
