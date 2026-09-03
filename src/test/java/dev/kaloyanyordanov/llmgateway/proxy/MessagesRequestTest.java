@@ -18,6 +18,20 @@ class MessagesRequestTest {
     }
 
     @Test
+    void sevenArgConstructorDefaultsToNonStreaming() {
+        MessagesRequest req = new MessagesRequest("m", null, null, null, null, 10, null);
+
+        assertThat(req.stream()).isNull();
+        assertThat(req.isStreaming()).isFalse();
+    }
+
+    @Test
+    void isStreamingReflectsTheFlag() {
+        assertThat(new MessagesRequest("m", null, null, null, null, 10, null, true).isStreaming()).isTrue();
+        assertThat(new MessagesRequest("m", null, null, null, null, 10, null, false).isStreaming()).isFalse();
+    }
+
+    @Test
     void listsAreDefensivelyCopiedOnConstruction() {
         List<Message> messages = new ArrayList<>(List.of(new Message("user", "hi")));
         List<String> stops = new ArrayList<>(List.of("STOP"));
