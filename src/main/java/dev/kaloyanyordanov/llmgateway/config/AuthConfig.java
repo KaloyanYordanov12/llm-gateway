@@ -20,6 +20,9 @@ public class AuthConfig {
     /** Path pattern protected by the API-key filter. */
     static final String PROXY_PATH_PATTERN = "/v1/*";
 
+    /** Filter order: authentication runs before rate limiting. */
+    public static final int AUTH_FILTER_ORDER = 10;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -31,6 +34,7 @@ public class AuthConfig {
         FilterRegistrationBean<ApiKeyAuthFilter> registration =
                 new FilterRegistrationBean<>(new ApiKeyAuthFilter(authenticator, jsonMapper));
         registration.addUrlPatterns(PROXY_PATH_PATTERN);
+        registration.setOrder(AUTH_FILTER_ORDER);
         return registration;
     }
 }

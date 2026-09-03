@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Housekeeping: Mockito attached as an explicit JVM agent (JDK 25 self-attach
     deprecation); CI actions bumped to `checkout@v5` / `setup-java@v5`.
 
+- **Phase 2 — Rate limiter.** Per-client token bucket with an injected
+  `Clock` (deterministic, zero-flaky tests), configurable capacity + refill
+  (`gateway.rate-limit.*`, default 60 req/min). A filter running after auth on
+  `/v1/*` returns `429` in the error envelope when a client is over its limit.
+
 ### Notes
 
 - **PIT mutation threshold now enforced from Phase 1 (≥70%), not Phase 2.** In

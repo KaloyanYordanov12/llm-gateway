@@ -33,5 +33,6 @@ class AuthConfigTest {
         assertThat(registration).isNotNull();
         assertThat(registration.getFilter()).isInstanceOf(ApiKeyAuthFilter.class);
         assertThat(registration.getUrlPatterns()).containsExactly("/v1/*");
+        assertThat(registration.getOrder()).isEqualTo(AuthConfig.AUTH_FILTER_ORDER);
     }
 }
