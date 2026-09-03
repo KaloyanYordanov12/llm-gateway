@@ -47,6 +47,13 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
+        <!-- RestClient auto-configuration (RestClient.Builder with the app's
+             message converters) lives in this Boot 4 module — a first-party
+             re-modularization, pre-approved under §A2. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
         <!-- Flyway (§A2): SQL-first, forward-only migrations.
              spring-boot-flyway carries Boot 4's Flyway auto-configuration, which
              was split out of the core autoconfigure module (a first-party Boot-4
@@ -87,6 +94,25 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
+        </dependency>
+        <!-- WireMock (§A2): stubs all provider HTTP so no real provider is ever
+             called ($0). Standalone (shaded) to avoid clashing with Boot 4's
+             Jetty/Jackson 3. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- SpotBugs annotations: provides @SuppressFBWarnings for the inline,
+             justified suppressions that pre-flight §5 explicitly permits. Compile
+             scope only (annotation is not needed at runtime). Aligned with the
+             spotbugs-maven-plugin (4.9.6.x). -->
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>4.9.6</version>
+            <scope>provided</scope>
         </dependency>
         <!--
           Spring Boot 4 extracted the MockMvc test slice (@AutoConfigureMockMvc,
