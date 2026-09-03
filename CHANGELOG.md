@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`gateway.rate-limit.*`, default 60 req/min). A filter running after auth on
   `/v1/*` returns `429` in the error envelope when a client is over its limit.
 
+- **Phase 3 — Provider adapter + resilience.** `ProviderClient` abstraction with
+  an `AnthropicProviderClient` (blocking `RestClient`), an N-provider
+  `ProviderRegistry`, and Resilience4j retry + circuit breaker around provider
+  calls (core modules wired manually — the Boot starter targets Boot 3). Added the
+  `POST /v1/messages` proxy endpoint and a global exception handler mapping
+  provider transport failures to `502` and an open circuit to `503`, both in the
+  error envelope. All provider traffic is stubbed with WireMock ($0); the
+  circuit-breaker state machine (closed → open → half-open → closed) is tested
+  against simulated 5xx.
+
 ### Notes
 
 - **PIT mutation threshold now enforced from Phase 1 (≥70%), not Phase 2.** In

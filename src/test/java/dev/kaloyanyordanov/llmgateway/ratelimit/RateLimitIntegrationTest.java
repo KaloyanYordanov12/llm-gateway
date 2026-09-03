@@ -50,10 +50,11 @@ class RateLimitIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void allowsUpToCapacityThenRejectsWith429() throws Exception {
-        // Capacity is 2: first two authenticated requests pass the limiter (they
-        // then 404 as no proxy handler exists yet); the third is rate-limited.
-        authenticatedRequest(404);
-        authenticatedRequest(404);
+        // Capacity is 2: the first two authenticated requests pass the limiter and
+        // reach the proxy handler (which 5xx's on the unreachable provider); the
+        // third is rejected by the rate limiter with 429 before any provider call.
+        authenticatedRequest(502);
+        authenticatedRequest(502);
 
         mockMvc.perform(post("/v1/messages")
                         .header(ApiKeyAuthFilter.API_KEY_HEADER, VALID_KEY)

@@ -54,12 +54,13 @@ class ApiKeyAuthIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void validKeyPassesAuthentication() throws Exception {
-        // No proxy handler exists yet (Phase 3), so a valid key passes auth and
-        // then falls through to 404 — the point is it is NOT 401.
+        // A valid key passes auth + rate limiting and reaches the proxy handler,
+        // which then fails at the (intentionally unreachable) provider with 5xx.
+        // The point of this test is only that it is NOT 401.
         mockMvc.perform(post("/v1/messages")
                         .header(ApiKeyAuthFilter.API_KEY_HEADER, VALID_KEY)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().is5xxServerError());
     }
 
     @Test
