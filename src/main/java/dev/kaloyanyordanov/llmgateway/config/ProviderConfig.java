@@ -5,6 +5,7 @@ import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderRegistry;
 import dev.kaloyanyordanov.llmgateway.provider.ResilientProviderClient;
+import dev.kaloyanyordanov.llmgateway.provider.StubProviderClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.Retry;
@@ -49,7 +50,29 @@ public class ProviderConfig {
     }
 
     @Bean
+    public ProviderClient stubProviderClient() {
+        return new StubProviderClient();
+    }
+
+    @Bean
     public ProviderRegistry providerRegistry(List<ProviderClient> providers, ProviderProperties properties) {
-        return new ProviderRegistry(providers, properties.name());
+        return new ProviderRegistry(providers, resolveDefaultProviderName(properties));
+    }
+
+    /**
+     * Resolves which registered provider is the registry default, based on
+     * {@code gateway.provider.mode}. The switch is exhaustive over
+     * {@link dev.kaloyanyordanov.llmgateway.provider.ProviderMode}; an unrecognized
+     * mode value never reaches here because it fails property binding at startup.
+     *
+     * @param properties the provider properties
+     * @return the provider name to serve as the registry default
+     */
+    static String resolveDefaultProviderName(ProviderProperties properties) {
+        return switch (properties.mode()) {
+            case LIVE -> properties.name();
+            case DEMO -> StubProviderClient.STUB_NAME;
+        };
     }
 }
+

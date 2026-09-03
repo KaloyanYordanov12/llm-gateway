@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Pre-deploy — Demo-mode stub provider.** A `StubProviderClient` (name
+  `stub`) that returns a canned response with a small plausible `Usage` and makes
+  no network call, plus a `gateway.provider.mode` selector (`live` | `demo`,
+  **default `live`**). In `demo` mode the registry default is the stub, so a
+  public deployment cannot cost anything; requests still flow through the full
+  `ProxyService` path (cache + usage), so the dashboard has real numbers.
+  Fail-secure: `live` is the default and an unrecognized mode fails startup rather
+  than silently selecting demo or silently spending.
 - **Phase 0 — Scaffolding & gates.** Empty-but-real Spring Boot 4.1.1 project on
   Java 25 (Temurin), built with Maven via the committed wrapper (`./mvnw`).
 - Feature-sliced package layout under `dev.kaloyanyordanov.llmgateway`
