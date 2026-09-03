@@ -10,8 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.kaloyanyordanov.llmgateway.cache.ResponseCacheService;
-import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
-import dev.kaloyanyordanov.llmgateway.provider.ProviderRegistry;
+import dev.kaloyanyordanov.llmgateway.provider.routing.ProviderRouter;
 import dev.kaloyanyordanov.llmgateway.usage.PricingService;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
 import dev.kaloyanyordanov.llmgateway.usage.UsageService;
@@ -28,13 +27,12 @@ class ProxyServiceTest {
     private static final MessagesRequest REQUEST =
             new MessagesRequest("m", null, List.of(new Message("user", "hi")), null, null, 10, null);
 
-    private final ProviderRegistry registry = mock(ProviderRegistry.class);
-    private final ProviderClient provider = mock(ProviderClient.class);
+    private final ProviderRouter providerRouter = mock(ProviderRouter.class);
     private final ResponseCacheService cache = mock(ResponseCacheService.class);
     private final PricingService pricingService = mock(PricingService.class);
     private final UsageService usageService = mock(UsageService.class);
     private final ProxyService service =
-            new ProxyService(registry, cache, pricingService, usageService);
+            new ProxyService(providerRouter, cache, pricingService, usageService);
 
     @Test
     void unknownModelIsRejectedBeforeAnyProviderOrCacheAccess() {
@@ -43,7 +41,7 @@ class ProxyServiceTest {
         assertThatThrownBy(() -> service.handle(REQUEST, CLIENT_ID))
                 .isInstanceOf(UnknownModelException.class);
 
-        verifyNoInteractions(cache, registry, usageService);
+        verifyNoInteractions(cache, providerRouter, usageService);
     }
 
     @Test
@@ -53,17 +51,15 @@ class ProxyServiceTest {
 
         assertThat(service.handle(REQUEST, CLIENT_ID)).isSameAs(RESPONSE);
 
-        verify(registry, never()).getDefault();
-        verifyNoInteractions(usageService);
+        verifyNoInteractions(providerRouter, usageService);
         verify(cache, never()).put(any(), any());
     }
 
     @Test
-    void cacheMissCallsProviderRecordsUsageAndCaches() {
+    void cacheMissRoutesRecordsUsageAndCaches() {
         when(pricingService.isKnown("m")).thenReturn(true);
         when(cache.get(REQUEST)).thenReturn(Optional.empty());
-        when(registry.getDefault()).thenReturn(provider);
-        when(provider.createMessage(REQUEST)).thenReturn(RESPONSE);
+        when(providerRouter.route(REQUEST)).thenReturn(RESPONSE);
         when(pricingService.cost("m", 12, 5)).thenReturn(new BigDecimal("0.10"));
 
         assertThat(service.handle(REQUEST, CLIENT_ID)).isSameAs(RESPONSE);

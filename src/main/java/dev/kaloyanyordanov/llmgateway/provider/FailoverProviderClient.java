@@ -47,6 +47,7 @@ public final class FailoverProviderClient implements ProviderClient {
             try {
                 return provider.createMessage(request);
             } catch (CallNotPermittedException | HttpServerErrorException | ResourceAccessException failure) {
+                // Availability failures warrant failover; a 4xx is not caught here and propagates.
                 lastFailure = failure;
             }
         }

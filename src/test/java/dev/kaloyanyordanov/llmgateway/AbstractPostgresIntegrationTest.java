@@ -32,6 +32,11 @@ public abstract class AbstractPostgresIntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // Many @SpringBootTest contexts share this one container; keep each pool
+        // tiny so the sum stays under Postgres's max_connections. Tests are
+        // sequential and need very few connections.
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "2");
+        registry.add("spring.datasource.hikari.minimum-idle", () -> "0");
     }
 
     @Autowired

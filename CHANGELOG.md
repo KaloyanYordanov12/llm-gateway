@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v2.2 — Per-model routing rules.** A pure, deterministic `ModelRouter` resolves
+  a logical model to an ordered list of concrete (provider, upstream-model)
+  targets from configuration (`gateway.routing.rules`) — logical→concrete mapping,
+  ordered fallback, and optional cost-preference sorting; adding a rule is config,
+  not code. A `ProviderRouter` executes the route (rewriting only the upstream
+  model, failing over across targets on availability errors) in place of the fixed
+  default. v1 is preserved: with no rules a request goes to the default provider
+  unchanged, an unknown/unpriced model still fails `400` (pricing governs
+  billability), and billing stays on the client's logical model. Unknown providers
+  in routing rules fail startup.
 - **v2.1 — Second provider + live failover.** An `OpenAiProviderClient` adapter
   (translating the gateway's normalized shape to/from OpenAI chat-completions,
   resilience-wrapped like the Anthropic client) and a `FailoverProviderClient`
