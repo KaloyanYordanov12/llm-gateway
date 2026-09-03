@@ -19,7 +19,14 @@ class ProviderConfigTest {
 
     private static ProviderProperties properties(ProviderMode mode) {
         return new ProviderProperties(
-                mode, "anthropic", "http://localhost:8089", "test-provider-key", "2023-06-01");
+                mode, List.of(), "anthropic", "http://localhost:8089", "test-provider-key", "2023-06-01",
+                new ProviderProperties.OpenAi("openai", "http://localhost:8090", "test-openai-key"));
+    }
+
+    private ProviderClient anthropic(ProviderProperties properties) {
+        return config.anthropicProviderClient(
+                properties, config.providerRestClient(properties, RestClient.builder()),
+                CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults());
     }
 
     @Test
@@ -28,8 +35,7 @@ class ProviderConfigTest {
         RestClient restClient = config.providerRestClient(properties, RestClient.builder());
         assertThat(restClient).isNotNull();
 
-        ProviderClient anthropic = config.anthropicProviderClient(
-                properties, restClient, CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults());
+        ProviderClient anthropic = anthropic(properties);
         assertThat(anthropic.name()).isEqualTo("anthropic");
 
         ProviderClient stub = config.stubProviderClient();
@@ -41,11 +47,19 @@ class ProviderConfigTest {
     }
 
     @Test
+    void buildsResilientOpenAiClient() {
+        ProviderProperties properties = properties(ProviderMode.LIVE);
+        ProviderClient openai = config.openAiProviderClient(
+                properties, config.openAiRestClient(properties, RestClient.builder()),
+                CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults());
+
+        assertThat(openai.name()).isEqualTo("openai");
+    }
+
+    @Test
     void demoModeSelectsTheStubAsDefault() {
         ProviderProperties properties = properties(ProviderMode.DEMO);
-        ProviderClient anthropic = config.anthropicProviderClient(
-                properties, config.providerRestClient(properties, RestClient.builder()),
-                CircuitBreakerRegistry.ofDefaults(), RetryRegistry.ofDefaults());
+        ProviderClient anthropic = anthropic(properties);
         ProviderClient stub = config.stubProviderClient();
 
         ProviderRegistry registry = config.providerRegistry(List.of(anthropic, stub), properties);

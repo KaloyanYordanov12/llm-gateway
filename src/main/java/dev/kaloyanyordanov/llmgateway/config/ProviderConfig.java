@@ -6,6 +6,7 @@ import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderRegistry;
 import dev.kaloyanyordanov.llmgateway.provider.ResilientProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.StubProviderClient;
+import dev.kaloyanyordanov.llmgateway.provider.openai.OpenAiProviderClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.Retry;
@@ -19,9 +20,10 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 /**
- * Wiring for provider access: the provider {@link RestClient} (base URL from
+ * Wiring for provider access: per-provider {@link RestClient}s (base URL from
  * {@link ProviderProperties}, using the app's configured message converters), the
- * Anthropic adapter, and the {@link ProviderRegistry}.
+ * resilience-wrapped Anthropic and OpenAI adapters, the demo stub, and the
+ * {@link ProviderRegistry}.
  */
 @Configuration
 @EnableConfigurationProperties(ProviderProperties.class)
@@ -29,13 +31,12 @@ public class ProviderConfig {
 
     @Bean
     public RestClient providerRestClient(ProviderProperties properties, RestClient.Builder builder) {
-        // Force HTTP/1.1: the JDK HttpClient's default h2c upgrade attempt over
-        // cleartext HTTP fails against some servers (e.g. WireMock) with an EOF.
-        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
-        return builder
-                .baseUrl(properties.baseUrl())
-                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
-                .build();
+        return http1RestClient(builder, properties.baseUrl());
+    }
+
+    @Bean
+    public RestClient openAiRestClient(ProviderProperties properties, RestClient.Builder builder) {
+        return http1RestClient(builder, properties.openai().baseUrl());
     }
 
     @Bean
@@ -44,9 +45,16 @@ public class ProviderConfig {
             CircuitBreakerRegistry circuitBreakerRegistry, RetryRegistry retryRegistry) {
         AnthropicProviderClient delegate = new AnthropicProviderClient(
                 properties.name(), providerRestClient, properties.apiKey(), properties.anthropicVersion());
-        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(properties.name());
-        Retry retry = retryRegistry.retry(properties.name());
-        return new ResilientProviderClient(delegate, circuitBreaker, retry);
+        return resilient(delegate, circuitBreakerRegistry, retryRegistry);
+    }
+
+    @Bean
+    public ProviderClient openAiProviderClient(
+            ProviderProperties properties, RestClient openAiRestClient,
+            CircuitBreakerRegistry circuitBreakerRegistry, RetryRegistry retryRegistry) {
+        OpenAiProviderClient delegate = new OpenAiProviderClient(
+                properties.openai().name(), openAiRestClient, properties.openai().apiKey());
+        return resilient(delegate, circuitBreakerRegistry, retryRegistry);
     }
 
     @Bean
@@ -74,5 +82,21 @@ public class ProviderConfig {
             case DEMO -> StubProviderClient.STUB_NAME;
         };
     }
-}
 
+    private static ResilientProviderClient resilient(ProviderClient delegate,
+            CircuitBreakerRegistry circuitBreakerRegistry, RetryRegistry retryRegistry) {
+        CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(delegate.name());
+        Retry retry = retryRegistry.retry(delegate.name());
+        return new ResilientProviderClient(delegate, circuitBreaker, retry);
+    }
+
+    private static RestClient http1RestClient(RestClient.Builder builder, String baseUrl) {
+        // Force HTTP/1.1: the JDK HttpClient's default h2c upgrade attempt over
+        // cleartext HTTP fails against some servers (e.g. WireMock) with an EOF.
+        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+        return builder
+                .baseUrl(baseUrl)
+                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .build();
+    }
+}
