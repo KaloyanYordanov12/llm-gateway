@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v3.1 — Multi-tenant: per-client rate limits + budgets.** Nullable `rate_limit`
+  and `budget` columns on `clients` (Flyway `V4`, additive/forward-only): a client
+  with neither set behaves exactly as before (global default limit, no cap). The
+  per-client token bucket now takes its capacity from the client's own
+  `rate_limit` when set (rebuilding the bucket if the limit changes), so distinct
+  clients enforce distinct limits independently. A hard `budget` cap is enforced
+  from accumulated usage cost before any cache lookup or provider call: once spend
+  reaches the cap, requests are rejected with **`402`** (`budget_exceeded`) in the
+  locked envelope until the cap is raised — proven from the pricing table's
+  computed cost (no real spend). Admin-key-protected write endpoints manage
+  tenancy: `POST /api/clients` generates an `sk-gw-` key, stores only its bcrypt
+  hash, and reveals the raw key **once**; `PATCH /api/clients/{id}` updates
+  `rate_limit`/`budget`/`enabled`. A client `x-api-key` can never reach these
+  routes. The read-only dashboard gains per-client rate-limit, budget, and
+  spend-vs-cap columns (a create-client form was deliberately skipped to keep the
+  SPA read-only — management is API-first).
 - **v2.3 — Streaming (SSE).** Opt-in via `stream:true` (excluded from the cache
   key, so a streamed and non-streamed request for the same messages share a cache
   entry). Blocking + virtual threads, not reactive: the JDK `HttpClient` reads the

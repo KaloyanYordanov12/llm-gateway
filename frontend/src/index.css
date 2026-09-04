@@ -162,6 +162,9 @@ tbody td.name { font-family: var(--mono); }
 .badge.on { color: var(--signal); background: var(--signal-dim); }
 .badge.off { color: var(--warn); background: var(--warn-dim); }
 
+/* Spend at or over the client's hard budget cap. */
+tbody td.cap-over { color: var(--warn); }
+
 .status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 8px var(--signal); animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

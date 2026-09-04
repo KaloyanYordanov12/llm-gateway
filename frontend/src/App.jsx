@@ -15,6 +15,17 @@ function cacheHitRate(stats) {
   return `${(((stats.cache_hits ?? 0) / total) * 100).toFixed(1)}%`;
 }
 
+// Per-client spend against the hard budget cap. No cap => no meter.
+function budgetUse(client) {
+  if (client.budget == null) {
+    return { text: '—', over: false };
+  }
+  const spend = Number(client.usage?.total_cost ?? 0);
+  const cap = Number(client.budget);
+  const pct = cap > 0 ? (spend / cap) * 100 : 100;
+  return { text: `${pct.toFixed(0)}%`, over: spend >= cap };
+}
+
 function Gauge({ label, value, sub, warn }) {
   return (
     <div className={warn ? 'gauge warn' : 'gauge'}>
@@ -116,29 +127,38 @@ export default function App() {
                 <tr>
                   <th>Client</th>
                   <th>Status</th>
+                  <th className="num">Rate limit</th>
+                  <th className="num">Budget</th>
                   <th className="num">Requests</th>
                   <th className="num">Input tok</th>
                   <th className="num">Output tok</th>
                   <th className="num">Spend</th>
+                  <th className="num">Spend / cap</th>
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td className="name">{client.name}</td>
-                    <td>
-                      <span className={client.enabled ? 'badge on' : 'badge off'}>
-                        {client.enabled ? 'enabled' : 'disabled'}
-                      </span>
-                    </td>
-                    <td className="num">{int.format(client.usage?.request_count ?? 0)}</td>
-                    <td className="num">{int.format(client.usage?.total_input_tokens ?? 0)}</td>
-                    <td className="num">{int.format(client.usage?.total_output_tokens ?? 0)}</td>
-                    <td className="num">{money(client.usage?.total_cost)}</td>
-                  </tr>
-                ))}
+                {clients.map((client) => {
+                  const use = budgetUse(client);
+                  return (
+                    <tr key={client.id}>
+                      <td className="name">{client.name}</td>
+                      <td>
+                        <span className={client.enabled ? 'badge on' : 'badge off'}>
+                          {client.enabled ? 'enabled' : 'disabled'}
+                        </span>
+                      </td>
+                      <td className="num">{client.rate_limit ?? 'default'}</td>
+                      <td className="num">{client.budget != null ? money(client.budget) : '—'}</td>
+                      <td className="num">{int.format(client.usage?.request_count ?? 0)}</td>
+                      <td className="num">{int.format(client.usage?.total_input_tokens ?? 0)}</td>
+                      <td className="num">{int.format(client.usage?.total_output_tokens ?? 0)}</td>
+                      <td className="num">{money(client.usage?.total_cost)}</td>
+                      <td className={use.over ? 'num cap-over' : 'num'}>{use.text}</td>
+                    </tr>
+                  );
+                })}
                 {clients.length === 0 ? (
-                  <tr><td className="empty" colSpan="6">No clients registered.</td></tr>
+                  <tr><td className="empty" colSpan="9">No clients registered.</td></tr>
                 ) : null}
               </tbody>
             </table>
