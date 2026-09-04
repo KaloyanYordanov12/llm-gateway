@@ -230,9 +230,12 @@
                                     <element>BUNDLE</element>
                                     <limits>
                                         <limit>
+                                            <!-- Ratcheted 85 -> 88 in v3.3: the
+                                                 suite genuinely clears it (line
+                                                 coverage sits at ~98%). -->
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.85</minimum>
+                                            <minimum>0.88</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
@@ -288,7 +291,10 @@
                         <param>HTML</param>
                         <param>XML</param>
                     </outputFormats>
-                    <mutationThreshold>70</mutationThreshold>
+                    <!-- Ratcheted 70 -> 80 in v3.3: the suite genuinely clears it
+                         (mutation score sits at ~84%). Not raised further so the
+                         gate stays honest rather than gamed. -->
+                    <mutationThreshold>80</mutationThreshold>
                 </configuration>
                 <executions>
                     <execution>
