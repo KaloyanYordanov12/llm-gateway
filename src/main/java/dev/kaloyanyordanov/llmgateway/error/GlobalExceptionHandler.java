@@ -1,6 +1,7 @@
 package dev.kaloyanyordanov.llmgateway.error;
 
 import dev.kaloyanyordanov.llmgateway.provider.AllProvidersUnavailableException;
+import dev.kaloyanyordanov.llmgateway.usage.BudgetExceededException;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.http.HttpStatus;
@@ -20,11 +21,18 @@ public class GlobalExceptionHandler {
     private static final String API_ERROR = "api_error";
     private static final String OVERLOADED_ERROR = "overloaded_error";
     private static final String INVALID_REQUEST_ERROR = "invalid_request_error";
+    private static final String BUDGET_EXCEEDED = "budget_exceeded";
 
     @ExceptionHandler(UnknownModelException.class)
     public ResponseEntity<ApiError> handleUnknownModel(UnknownModelException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrors.of(INVALID_REQUEST_ERROR, ex.getMessage()));
+    }
+
+    @ExceptionHandler(BudgetExceededException.class)
+    public ResponseEntity<ApiError> handleBudgetExceeded(BudgetExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(ApiErrors.of(BUDGET_EXCEEDED, ex.getMessage()));
     }
 
     @ExceptionHandler(CallNotPermittedException.class)

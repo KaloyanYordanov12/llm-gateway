@@ -3,7 +3,9 @@ package dev.kaloyanyordanov.llmgateway.error;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.kaloyanyordanov.llmgateway.provider.AllProvidersUnavailableException;
+import dev.kaloyanyordanov.llmgateway.usage.BudgetExceededException;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
+import java.math.BigDecimal;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.junit.jupiter.api.Test;
@@ -49,6 +51,18 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().error().type()).isEqualTo("invalid_request_error");
         assertThat(response.getBody().error().message()).contains("nope");
+    }
+
+    @Test
+    void budgetExceededMapsToPaymentRequiredEnvelope() {
+        ResponseEntity<ApiError> response = handler.handleBudgetExceeded(
+                new BudgetExceededException(new BigDecimal("1.50"), new BigDecimal("1.00")));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().type()).isEqualTo("error");
+        assertThat(response.getBody().error().type()).isEqualTo("budget_exceeded");
+        assertThat(response.getBody().requestId()).isNotBlank();
     }
 
     @Test
