@@ -165,6 +165,81 @@ tbody td.name { font-family: var(--mono); }
 /* Spend at or over the client's hard budget cap. */
 tbody td.cap-over { color: var(--warn); }
 
+/* ── Create-client form ── */
+.panel.form { padding: 16px; }
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.form-row input {
+  background: var(--bg);
+  border: 1px solid var(--panel-edge);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 4px;
+}
+.form-row input:focus { outline: 2px solid var(--signal); outline-offset: 0; }
+.form-row input:first-child { flex: 1 1 180px; }
+.form-error { color: var(--warn); font-family: var(--mono); font-size: 12px; margin-top: 10px; }
+
+/* Buttons inside panels/rows reuse the signal-button styling. */
+.form-row button, .actions button, .keyreveal button {
+  background: var(--signal-dim);
+  border: 1px solid var(--signal);
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.form-row button:hover, .actions button:hover, .keyreveal button:hover {
+  background: rgba(79, 214, 201, 0.22);
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.ghost { background: transparent; border-color: var(--panel-edge); color: var(--muted); }
+button.ghost:hover { border-color: var(--muted); background: transparent; }
+button.warn-action { border-color: var(--warn); color: var(--warn); }
+button.warn-action:hover { background: var(--warn-dim); }
+
+/* ── Row actions + inline edit ── */
+th.actions, td.actions { text-align: right; white-space: nowrap; }
+td.actions button { margin-left: 6px; }
+.cell-input {
+  width: 90px;
+  background: var(--bg);
+  border: 1px solid var(--panel-edge);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-align: right;
+}
+td.row-error { color: var(--warn); font-family: var(--mono); font-size: 12px; padding: 8px 16px; }
+
+/* ── One-time key reveal ── */
+.keyreveal {
+  border: 1px solid var(--signal);
+  background: var(--signal-dim);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
+}
+.keyreveal-head { color: var(--ink); font-size: 13px; margin-bottom: 12px; }
+.keyreveal-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.keyreveal-key {
+  flex: 1 1 320px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--signal);
+  background: var(--bg);
+  border: 1px solid var(--panel-edge);
+  border-radius: 4px;
+  padding: 8px 10px;
+  word-break: break-all;
+}
+
 .status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 8px var(--signal); animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
