@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchClients, fetchStats, fetchUsage } from './api.js';
 
-const KEY_STORAGE = 'llmgw.adminKey';
+// The admin key is held in React state only, never in localStorage or
+// sessionStorage: it is a privileged credential, so it lives only for the life of
+// the tab and must be re-entered after a refresh.
 const REFRESH_MS = 10000;
 
 const int = new Intl.NumberFormat('en-US');
@@ -37,8 +39,8 @@ function Gauge({ label, value, sub, warn }) {
 }
 
 export default function App() {
-  const [adminKey, setAdminKey] = useState(() => localStorage.getItem(KEY_STORAGE) ?? '');
-  const [draftKey, setDraftKey] = useState(adminKey);
+  const [adminKey, setAdminKey] = useState('');
+  const [draftKey, setDraftKey] = useState('');
   const [stats, setStats] = useState(null);
   const [clients, setClients] = useState([]);
   const [error, setError] = useState(null);
@@ -72,7 +74,6 @@ export default function App() {
   }, [adminKey, load]);
 
   const connect = () => {
-    localStorage.setItem(KEY_STORAGE, draftKey);
     setAdminKey(draftKey);
   };
 
