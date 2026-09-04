@@ -25,13 +25,20 @@ public class RateLimiterService {
 
     /**
      * Attempts to admit one request for the given client, counting rejections.
+     * The bucket capacity is the client's own limit when set, otherwise the
+     * configured global default. If a client's limit changes, its bucket is
+     * rebuilt at the new capacity on the next request.
      *
-     * @param clientId the authenticated client's id
+     * @param clientId    the authenticated client's id
+     * @param clientLimit the client's per-client limit, or {@code null} for the default
      * @return {@code true} if within the limit; {@code false} if rate-limited
      */
-    public boolean tryAcquire(long clientId) {
-        TokenBucket bucket = buckets.computeIfAbsent(clientId,
-                id -> new TokenBucket(properties.capacity(), properties.refillPeriod(), clock));
+    public boolean tryAcquire(long clientId, Integer clientLimit) {
+        long capacity = clientLimit != null ? clientLimit : properties.capacity();
+        TokenBucket bucket = buckets.compute(clientId, (id, existing) ->
+                existing != null && existing.capacity() == capacity
+                        ? existing
+                        : new TokenBucket(capacity, properties.refillPeriod(), clock));
         boolean allowed = bucket.tryConsume();
         if (!allowed) {
             rejections.incrementAndGet();

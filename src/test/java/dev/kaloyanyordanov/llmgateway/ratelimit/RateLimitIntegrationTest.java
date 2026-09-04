@@ -35,10 +35,15 @@ class RateLimitIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    private static final String LIMITED_KEY = "limited-key";
+
     @BeforeEach
     void seedClient() {
         clientRepository.deleteAll();
         clientRepository.save(new Client("acme", passwordEncoder.encode(VALID_KEY), true));
+        // A client whose own limit (1) is stricter than the global default (2).
+        clientRepository.save(
+                new Client("limited", passwordEncoder.encode(LIMITED_KEY), true, 1, null));
     }
 
     private static final String BODY =
@@ -67,5 +72,22 @@ class RateLimitIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(jsonPath("$.type").value("error"))
                 .andExpect(jsonPath("$.error.type").value("rate_limit_error"))
                 .andExpect(jsonPath("$.request_id").exists());
+    }
+
+    @Test
+    void perClientLimitIsEnforcedIndependentlyOfTheGlobalDefault() throws Exception {
+        // The limited client's own cap is 1, below the global default of 2: its
+        // first request reaches the proxy (502 on the unreachable provider), its
+        // second is rejected with 429 — one earlier than a default client would be.
+        mockMvc.perform(post("/v1/messages")
+                        .header(ApiKeyAuthFilter.API_KEY_HEADER, LIMITED_KEY)
+                        .contentType(MediaType.APPLICATION_JSON).content(BODY))
+                .andExpect(status().is(502));
+
+        mockMvc.perform(post("/v1/messages")
+                        .header(ApiKeyAuthFilter.API_KEY_HEADER, LIMITED_KEY)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error.type").value("rate_limit_error"));
     }
 }

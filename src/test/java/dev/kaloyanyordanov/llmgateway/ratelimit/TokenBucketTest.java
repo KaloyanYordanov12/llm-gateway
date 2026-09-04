@@ -51,6 +51,13 @@ class TokenBucketTest {
     }
 
     @Test
+    void capacityReportsTheConfiguredValue() {
+        TokenBucket bucket = new TokenBucket(42, ONE_MINUTE, new MutableClock(START));
+
+        assertThat(bucket.capacity()).isEqualTo(42);
+    }
+
+    @Test
     void refillIsCappedAtCapacity() {
         MutableClock clock = new MutableClock(START);
         TokenBucket bucket = new TokenBucket(3, ONE_MINUTE, clock);

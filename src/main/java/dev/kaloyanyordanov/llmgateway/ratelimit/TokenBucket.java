@@ -50,6 +50,14 @@ public class TokenBucket {
         return false;
     }
 
+    /**
+     * @return this bucket's capacity (also its burst size); used to detect when a
+     *     client's configured limit has changed and the bucket must be rebuilt
+     */
+    public long capacity() {
+        return capacity;
+    }
+
     private void refill() {
         Instant now = clock.instant();
         long elapsedNanos = Duration.between(lastRefill, now).toNanos();

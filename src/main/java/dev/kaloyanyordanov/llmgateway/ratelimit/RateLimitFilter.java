@@ -37,7 +37,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
         Object attribute = request.getAttribute(ApiKeyAuthFilter.CLIENT_ATTRIBUTE);
-        if (attribute instanceof Client client && !rateLimiter.tryAcquire(client.getId())) {
+        if (attribute instanceof Client client
+                && !rateLimiter.tryAcquire(client.getId(), client.getRateLimit())) {
             writeTooManyRequests(response);
             return;
         }

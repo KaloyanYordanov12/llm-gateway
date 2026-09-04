@@ -1,6 +1,8 @@
 package dev.kaloyanyordanov.llmgateway.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -31,7 +33,7 @@ class RateLimitFilterTest {
 
     @Test
     void withinLimitProceeds() throws Exception {
-        when(rateLimiter.tryAcquire(1L)).thenReturn(true);
+        when(rateLimiter.tryAcquire(anyLong(), any())).thenReturn(true);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(ApiKeyAuthFilter.CLIENT_ATTRIBUTE, clientWithId(1L));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -45,7 +47,7 @@ class RateLimitFilterTest {
 
     @Test
     void overLimitReturns429Envelope() throws Exception {
-        when(rateLimiter.tryAcquire(1L)).thenReturn(false);
+        when(rateLimiter.tryAcquire(anyLong(), any())).thenReturn(false);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(ApiKeyAuthFilter.CLIENT_ATTRIBUTE, clientWithId(1L));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -60,6 +62,23 @@ class RateLimitFilterTest {
                 .contains("rate_limit_error")
                 .contains("request_id");
         assertThat(chain.getRequest()).as("chain did not proceed").isNull();
+    }
+
+    @Test
+    void passesTheClientsOwnLimitToTheRateLimiter() throws Exception {
+        Client client = mock(Client.class);
+        when(client.getId()).thenReturn(9L);
+        when(client.getRateLimit()).thenReturn(5);
+        when(rateLimiter.tryAcquire(9L, 5)).thenReturn(true);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(ApiKeyAuthFilter.CLIENT_ATTRIBUTE, client);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        assertThat(chain.getRequest()).as("chain proceeded").isNotNull();
     }
 
     @Test
