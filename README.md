@@ -127,8 +127,13 @@ gated tests.
   cost (no real spend). Tenancy is managed through the admin API: `POST /api/clients`
   mints a client and returns its raw `sk-gw-` key **once** (only the bcrypt hash is
   stored), `PATCH /api/clients/{id}` updates `rate_limit` / `budget` / `enabled`.
-  The dashboard shows each client's limit, budget, and spend-vs-cap. A client
-  `x-api-key` can never reach the admin routes.
+  The dashboard shows each client's limit, budget, and spend-vs-cap, and includes
+  an admin panel that performs this same management from the UI: create a client
+  (the raw key is revealed once and held in memory only, never written to browser
+  storage), edit a rate limit or budget, clear a cap, and enable or disable, with a
+  confirm step on disabling a client and on clearing a budget cap. The panel is
+  just a client of the tested API; a client `x-api-key` can never reach the admin
+  routes.
 - **Observability.** Micrometer instruments requests, cache hits/misses, provider
   calls, failovers, and rate-limit / budget rejections (tagged per client where it
   makes sense), and times every proxied request. Request-latency **p50/p95/p99**
@@ -238,23 +243,19 @@ Docker image is also built and published to GHCR as a reproducible artifact.
 
 ## Deliberately out of scope
 
-These were left out on purpose — each is a scope decision, not a gap:
+These were left out on purpose. Each is a scope decision, not a gap:
 
 - **Redis / horizontal scale.** The gateway is single-instance; the rate-limiter
   buckets and response cache live in-process. Shared state (Redis) would solve a
   problem this deployment doesn't have. If it needed to scale horizontally, the
-  token buckets and the cache are the two pieces that would move to Redis — the
+  token buckets and the cache are the two pieces that would move to Redis, and the
   interfaces are already narrow enough to swap.
 - **Streaming failover across providers.** Non-streaming failover is fully live,
-  and streaming works — but switching providers *mid-stream* (transparently
+  and streaming works, but switching providers *mid-stream* (transparently
   continuing a streamed response on a second provider after the first fails partway
   through) is a deliberate boundary: the two providers' streaming formats differ,
   so it's a noted future enhancement. A pre-first-byte streaming failure still
   surfaces cleanly to the client.
-- **A full interactive write-UI.** Multi-tenant management is **API-first** — the
-  admin endpoints are the tested surface. The dashboard is read-only by design (it
-  displays per-client config and telemetry); a create-client form was deliberately
-  skipped rather than duplicate tested logic in the SPA.
 
 ## Load testing
 

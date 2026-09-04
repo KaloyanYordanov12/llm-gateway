@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v3.5 — Admin panel (tenant management UI).** The dashboard gains a read-write
+  admin panel over the existing admin API: a create-client form with a one-time
+  raw-key reveal (copy-once, held in transient React state only, never written to
+  browser storage or logged, gone on refresh), per-client inline edit of rate
+  limit and budget, clear-a-cap, and enable/disable, with a confirm step on
+  disabling a client and on clearing a budget cap. The admin key is now held in
+  memory only (it was previously persisted to `localStorage`; that is fixed).
+  `PATCH /api/clients/{id}` gained `clear_rate_limit` / `clear_budget` flags so a
+  cap can be removed (a value field still means "leave unchanged"; the clear flag
+  takes precedence). Admin write-route authorization and validation are covered by
+  HTTP-level tests: missing/wrong admin key and a client key are rejected, and
+  duplicate name and unknown id return 400.
 - **v3.3 — Ratcheted rigor + load-test artifact.** A committed
   [k6](https://k6.io/) script (`loadtest/gateway.js`) drives `/v1/messages` with a
   configurable mix of unique prompts (cache misses → provider call + accounting)
