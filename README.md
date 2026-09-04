@@ -187,7 +187,17 @@ configuration (application config; empty/absent keys preserve v1 behavior):
   standard JSON response.
 - `GET /api/clients` · `GET /api/usage?client=<id>` · `GET /api/stats` — read-only
   admin API, authenticated with `x-admin-key`. Never exposes key hashes.
+  `/api/stats` includes request-latency p50/p95/p99.
+- `POST /api/clients` · `PATCH /api/clients/{id}` — admin-only client management:
+  create a client (generates an `sk-gw-` key, returns the raw key **once**, stores
+  only its bcrypt hash) and update its `rate_limit` / `budget` / `enabled`.
+- `GET /api/metrics` — Prometheus scrape, admin-authenticated. Deliberately **not**
+  on the public actuator surface: a public metrics endpoint would leak internals.
 - `GET /actuator/health` — liveness/readiness.
+
+Per-client `rate_limit` (falls back to the global default when unset) and hard
+`budget` caps are enforced on the proxy: an over-budget client is rejected with
+`402 budget_exceeded` before any provider call.
 
 ## Stack
 
@@ -205,6 +215,31 @@ Docker image is also built and published to GHCR as a reproducible artifact.
   fails partway through) is a deliberate scope boundary, not an omission: the two
   providers' streaming formats differ, so it's a noted future enhancement. A
   pre-first-byte streaming failure surfaces cleanly to the client.
+
+## Load testing
+
+A [k6](https://k6.io/) script at [`loadtest/gateway.js`](loadtest/gateway.js) drives
+`POST /v1/messages` with a configurable mix of **unique** prompts (cache misses — a
+provider call plus usage accounting) and **repeated** prompts (cache hits, served
+without a provider call), so one run exercises the proxy, the response cache, and
+cost accounting together. It is a runnable artifact, **not a CI gate** — `mvnw verify`
+never runs it (load tests are slow and flaky in CI).
+
+Point it at a gateway in demo mode (WireMock/stub provider, so it costs nothing to
+run):
+
+```bash
+k6 run loadtest/gateway.js
+# against a remote gateway, tuned:
+k6 run -e BASE_URL=https://gateway.example.com -e API_KEY=sk-gw-... \
+       -e VUS=25 -e DURATION=1m -e HIT_RATIO=0.5 loadtest/gateway.js
+```
+
+`BASE_URL`, `API_KEY`, `MODEL`, `VUS`, `DURATION`, and `HIT_RATIO` are all
+overridable via `-e`. The run reports k6's built-in throughput and latency
+(`http_req_duration` p95, `http_reqs`), plus `gateway_unique_prompts` /
+`gateway_repeated_prompts` counters so you can see the cache-hit split; the
+gateway's own p50/p95/p99 are visible on the dashboard and `GET /api/stats`.
 
 ## Development
 
