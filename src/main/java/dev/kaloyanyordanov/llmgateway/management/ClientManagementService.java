@@ -55,25 +55,30 @@ public class ClientManagementService {
     /**
      * Updates a client's multi-tenant controls. Each argument is applied only when
      * present; a {@code null} leaves that field unchanged.
+     * <p>A value field is applied only when present; a {@code clear} flag removes
+     * that setting (rate limit back to the global default, budget to no cap) and
+     * takes precedence over a value for the same field.</p>
      *
-     * @param id        the client id
-     * @param rateLimit new rate limit, or {@code null} to leave unchanged
-     * @param budget    new budget cap, or {@code null} to leave unchanged
-     * @param enabled   new enabled flag, or {@code null} to leave unchanged
+     * @param id      the client id
+     * @param request the fields to change
      * @return the updated client
      * @throws IllegalArgumentException if no client has the given id
      */
-    public Client update(long id, Integer rateLimit, BigDecimal budget, Boolean enabled) {
+    public Client update(long id, UpdateClientRequest request) {
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("No client with id " + id));
-        if (rateLimit != null) {
-            client.setRateLimit(rateLimit);
+        if (Boolean.TRUE.equals(request.clearRateLimit())) {
+            client.setRateLimit(null);
+        } else if (request.rateLimit() != null) {
+            client.setRateLimit(request.rateLimit());
         }
-        if (budget != null) {
-            client.setBudget(budget);
+        if (Boolean.TRUE.equals(request.clearBudget())) {
+            client.setBudget(null);
+        } else if (request.budget() != null) {
+            client.setBudget(request.budget());
         }
-        if (enabled != null) {
-            client.setEnabled(enabled);
+        if (request.enabled() != null) {
+            client.setEnabled(request.enabled());
         }
         return clientRepository.save(client);
     }

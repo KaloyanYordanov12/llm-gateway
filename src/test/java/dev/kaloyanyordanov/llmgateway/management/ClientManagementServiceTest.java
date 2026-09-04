@@ -76,7 +76,7 @@ class ClientManagementServiceTest {
         when(repository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // Only the budget is provided; rate limit and enabled must be untouched.
-        Client updated = service.update(5L, null, new BigDecimal("9.00"), null);
+        Client updated = service.update(5L, new UpdateClientRequest(null, new BigDecimal("9.00"), null, null, null));
 
         assertThat(updated.getBudget()).isEqualByComparingTo("9.00");
         assertThat(updated.getRateLimit()).isEqualTo(30);
@@ -89,7 +89,7 @@ class ClientManagementServiceTest {
         when(repository.findById(5L)).thenReturn(Optional.of(existing));
         when(repository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Client updated = service.update(5L, 10, null, false);
+        Client updated = service.update(5L, new UpdateClientRequest(10, null, false, null, null));
 
         assertThat(updated.getRateLimit()).isEqualTo(10);
         assertThat(updated.isEnabled()).isFalse();
@@ -97,10 +97,47 @@ class ClientManagementServiceTest {
     }
 
     @Test
+    void updateClearsTheBudgetCapWhenTheClearFlagIsSet() {
+        Client existing = new Client("acme", "hash", true, 30, new BigDecimal("2.00"));
+        when(repository.findById(5L)).thenReturn(Optional.of(existing));
+        when(repository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Client updated = service.update(5L, new UpdateClientRequest(null, null, null, null, true));
+
+        assertThat(updated.getBudget()).isNull();
+        assertThat(updated.getRateLimit()).isEqualTo(30);
+    }
+
+    @Test
+    void updateClearsTheRateLimitWhenTheClearFlagIsSet() {
+        Client existing = new Client("acme", "hash", true, 30, new BigDecimal("2.00"));
+        when(repository.findById(5L)).thenReturn(Optional.of(existing));
+        when(repository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Client updated = service.update(5L, new UpdateClientRequest(null, null, null, true, null));
+
+        assertThat(updated.getRateLimit()).isNull();
+        assertThat(updated.getBudget()).isEqualByComparingTo("2.00");
+    }
+
+    @Test
+    void aClearFlagTakesPrecedenceOverAValueForTheSameField() {
+        Client existing = new Client("acme", "hash", true, 30, new BigDecimal("2.00"));
+        when(repository.findById(5L)).thenReturn(Optional.of(existing));
+        when(repository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Both a value and the clear flag are sent; clear wins.
+        Client updated =
+                service.update(5L, new UpdateClientRequest(null, new BigDecimal("9.00"), null, null, true));
+
+        assertThat(updated.getBudget()).isNull();
+    }
+
+    @Test
     void updateRejectsAnUnknownId() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.update(99L, 1, null, null))
+        assertThatThrownBy(() -> service.update(99L, new UpdateClientRequest(1, null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

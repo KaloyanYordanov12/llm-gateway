@@ -58,11 +58,11 @@ class ManagementControllerTest {
     @Test
     void updateDelegatesToServiceAndReturnsViewWithoutKey() {
         Client updated = new Client("acme", "bcrypt-hash", false, 10, new BigDecimal("5.00"));
-        when(clientManagementService.update(eq(5L), eq(10), eq(new BigDecimal("5.00")), eq(false)))
-                .thenReturn(updated);
+        UpdateClientRequest request =
+                new UpdateClientRequest(10, new BigDecimal("5.00"), false, null, null);
+        when(clientManagementService.update(eq(5L), eq(request))).thenReturn(updated);
 
-        ClientView view =
-                controller.updateClient(5L, new UpdateClientRequest(10, new BigDecimal("5.00"), false));
+        ClientView view = controller.updateClient(5L, request);
 
         assertThat(view.name()).isEqualTo("acme");
         assertThat(view.enabled()).isFalse();

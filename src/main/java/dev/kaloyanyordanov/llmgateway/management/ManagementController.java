@@ -52,8 +52,7 @@ public class ManagementController {
 
     @PatchMapping("/clients/{id}")
     public ClientView updateClient(@PathVariable long id, @RequestBody UpdateClientRequest request) {
-        return ClientView.from(
-                clientManagementService.update(id, request.rateLimit(), request.budget(), request.enabled()));
+        return ClientView.from(clientManagementService.update(id, request));
     }
 
     @GetMapping("/usage")

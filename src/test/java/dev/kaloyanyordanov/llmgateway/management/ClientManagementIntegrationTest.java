@@ -135,6 +135,20 @@ class ClientManagementIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    void clearingTheBudgetCapRemovesItViaThePatchRoute() throws Exception {
+        long id = clientRepository.save(
+                new Client("capped", "hash", true, null, new java.math.BigDecimal("5.00"))).getId();
+
+        mockMvc.perform(patch("/api/clients/" + id)
+                        .header(AdminAuthFilter.ADMIN_KEY_HEADER, ADMIN_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clear_budget\":true}"))
+                .andExpect(status().isOk());
+
+        assertThat(clientRepository.findById(id).orElseThrow().getBudget()).isNull();
+    }
+
+    @Test
     void blankNameIsRejectedWith400() throws Exception {
         mockMvc.perform(post("/api/clients")
                         .header(AdminAuthFilter.ADMIN_KEY_HEADER, ADMIN_KEY)
