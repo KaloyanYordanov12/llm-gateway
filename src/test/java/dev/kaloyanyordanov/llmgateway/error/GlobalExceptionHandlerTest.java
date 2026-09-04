@@ -66,6 +66,17 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void illegalArgumentMapsToBadRequestEnvelope() {
+        ResponseEntity<ApiError> response =
+                handler.handleIllegalArgument(new IllegalArgumentException("Client name must not be blank"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().error().type()).isEqualTo("invalid_request_error");
+        assertThat(response.getBody().error().message()).contains("blank");
+    }
+
+    @Test
     void providerFailureMapsToBadGatewayEnvelope() {
         ResponseEntity<ApiError> response =
                 handler.handleProviderFailure(new ResourceAccessException("connection refused"));

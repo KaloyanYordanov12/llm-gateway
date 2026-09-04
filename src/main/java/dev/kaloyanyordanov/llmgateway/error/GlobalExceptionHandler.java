@@ -35,6 +35,12 @@ public class GlobalExceptionHandler {
                 .body(ApiErrors.of(BUDGET_EXCEEDED, ex.getMessage()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrors.of(INVALID_REQUEST_ERROR, ex.getMessage()));
+    }
+
     @ExceptionHandler(CallNotPermittedException.class)
     public ResponseEntity<ApiError> handleCircuitOpen(CallNotPermittedException ex) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
