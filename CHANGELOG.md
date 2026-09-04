@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v3.2 — Observability.** Micrometer instrumentation via Actuator: counters for
+  requests (per client), cache hits/misses, rate-limit rejections (all bound to
+  the existing in-service counters, one source of truth), provider calls,
+  failovers, and budget rejections, plus a request-latency timer. A `MetricsFilter`
+  times each admitted proxied request. Request latency is tracked deterministically
+  (nearest-rank p50/p95/p99 over a bounded window) and surfaced through the admin
+  `GET /api/stats`, with a latency panel on the dashboard. A Prometheus scrape is
+  wired via `micrometer-registry-prometheus` but served **only** through the
+  admin-key-guarded `GET /api/metrics` — it is deliberately not added to the public
+  actuator `exposure.include`, because a public metrics endpoint would leak
+  internals (per-client ids, spend, traffic shape).
 - **v3.1 — Multi-tenant: per-client rate limits + budgets.** Nullable `rate_limit`
   and `budget` columns on `clients` (Flyway `V4`, additive/forward-only): a client
   with neither set behaves exactly as before (global default limit, no cap). The

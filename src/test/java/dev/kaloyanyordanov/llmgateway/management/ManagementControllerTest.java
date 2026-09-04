@@ -80,7 +80,7 @@ class ManagementControllerTest {
 
     @Test
     void statsDelegatesToService() {
-        StatsView stats = new StatsView(3, 100, 40, new BigDecimal("1.50"), 7, 2, 1);
+        StatsView stats = new StatsView(3, 100, 40, new BigDecimal("1.50"), 7, 2, 1, 12, 40, 88);
         when(statsService.currentStats()).thenReturn(stats);
 
         assertThat(controller.stats()).isSameAs(stats);

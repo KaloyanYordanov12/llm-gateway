@@ -64,6 +64,9 @@ class ManagementIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_requests").value(1))
                 .andExpect(jsonPath("$.total_input_tokens").value(100))
-                .andExpect(jsonPath("$.rate_limit_rejections").exists());
+                .andExpect(jsonPath("$.rate_limit_rejections").exists())
+                .andExpect(jsonPath("$.p50_millis").exists())
+                .andExpect(jsonPath("$.p95_millis").exists())
+                .andExpect(jsonPath("$.p99_millis").exists());
     }
 }

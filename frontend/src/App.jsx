@@ -120,6 +120,13 @@ export default function App() {
               sub="429 responses" warn={(stats?.rate_limit_rejections ?? 0) > 0} />
           </div>
 
+          <div className="rail">Latency</div>
+          <div className="gauges">
+            <Gauge label="p50" value={`${int.format(stats?.p50_millis ?? 0)} ms`} sub="median" />
+            <Gauge label="p95" value={`${int.format(stats?.p95_millis ?? 0)} ms`} sub="95th percentile" />
+            <Gauge label="p99" value={`${int.format(stats?.p99_millis ?? 0)} ms`} sub="99th percentile" />
+          </div>
+
           <div className="rail">Clients</div>
           <div className="panel">
             <table>

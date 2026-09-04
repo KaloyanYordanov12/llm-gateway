@@ -12,6 +12,9 @@ import java.math.BigDecimal;
  * @param cacheHits           cache hits since start
  * @param cacheMisses         cache misses since start
  * @param rateLimitRejections requests rejected for exceeding the rate limit
+ * @param p50Millis           median request latency (ms) over the recent window
+ * @param p95Millis           95th-percentile request latency (ms)
+ * @param p99Millis           99th-percentile request latency (ms)
  */
 public record StatsView(
         long totalRequests,
@@ -20,5 +23,8 @@ public record StatsView(
         BigDecimal totalCost,
         long cacheHits,
         long cacheMisses,
-        long rateLimitRejections) {
+        long rateLimitRejections,
+        long p50Millis,
+        long p95Millis,
+        long p99Millis) {
 }

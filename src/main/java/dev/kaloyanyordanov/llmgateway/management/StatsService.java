@@ -1,6 +1,8 @@
 package dev.kaloyanyordanov.llmgateway.management;
 
 import dev.kaloyanyordanov.llmgateway.cache.ResponseCacheService;
+import dev.kaloyanyordanov.llmgateway.metrics.LatencyPercentiles;
+import dev.kaloyanyordanov.llmgateway.metrics.LatencyTracker;
 import dev.kaloyanyordanov.llmgateway.ratelimit.RateLimiterService;
 import dev.kaloyanyordanov.llmgateway.usage.UsageService;
 import dev.kaloyanyordanov.llmgateway.usage.UsageTotals;
@@ -9,7 +11,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Assembles the aggregate {@link StatsView} the dashboard reads, combining usage
- * totals with the live cache and rate-limiter counters.
+ * totals with the live cache and rate-limiter counters and the request-latency
+ * percentiles.
  */
 @Service
 public class StatsService {
@@ -17,15 +20,17 @@ public class StatsService {
     private final UsageService usageService;
     private final ResponseCacheService cache;
     private final RateLimiterService rateLimiter;
+    private final LatencyTracker latencyTracker;
 
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
             justification = "Collaborators are Spring-managed singletons; holding the shared "
                     + "references is intentional DI, not mutable-state exposure.")
     public StatsService(UsageService usageService, ResponseCacheService cache,
-            RateLimiterService rateLimiter) {
+            RateLimiterService rateLimiter, LatencyTracker latencyTracker) {
         this.usageService = usageService;
         this.cache = cache;
         this.rateLimiter = rateLimiter;
+        this.latencyTracker = latencyTracker;
     }
 
     /**
@@ -33,6 +38,7 @@ public class StatsService {
      */
     public StatsView currentStats() {
         UsageTotals totals = usageService.overallTotals();
+        LatencyPercentiles latency = latencyTracker.snapshot();
         return new StatsView(
                 totals.requestCount(),
                 totals.totalInputTokens(),
@@ -40,6 +46,9 @@ public class StatsService {
                 totals.totalCost(),
                 cache.hitCount(),
                 cache.missCount(),
-                rateLimiter.rejectionCount());
+                rateLimiter.rejectionCount(),
+                latency.p50Millis(),
+                latency.p95Millis(),
+                latency.p99Millis());
     }
 }
