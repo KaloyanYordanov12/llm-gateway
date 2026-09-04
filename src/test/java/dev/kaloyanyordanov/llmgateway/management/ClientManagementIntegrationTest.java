@@ -173,6 +173,61 @@ class ClientManagementIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void createWithAWrongAdminKeyIsRejected() throws Exception {
+        mockMvc.perform(post("/api/clients")
+                        .header(AdminAuthFilter.ADMIN_KEY_HEADER, "wrong-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"nope\"}"))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(clientRepository.findByName("nope")).isEmpty();
+    }
+
+    @Test
+    void updateWithAMissingOrWrongAdminKeyIsRejected() throws Exception {
+        long id = clientRepository.save(new Client("epsilon", "hash", true)).getId();
+
+        // No admin key at all.
+        mockMvc.perform(patch("/api/clients/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false}"))
+                .andExpect(status().isUnauthorized());
+
+        // A wrong admin key.
+        mockMvc.perform(patch("/api/clients/" + id)
+                        .header(AdminAuthFilter.ADMIN_KEY_HEADER, "wrong-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false}"))
+                .andExpect(status().isUnauthorized());
+
+        // The client is untouched by the rejected writes.
+        assertThat(clientRepository.findById(id).orElseThrow().isEnabled()).isTrue();
+    }
+
+    @Test
+    void duplicateNameIsRejectedWith400() throws Exception {
+        clientRepository.save(new Client("acme", "hash", true));
+
+        mockMvc.perform(post("/api/clients")
+                        .header(AdminAuthFilter.ADMIN_KEY_HEADER, ADMIN_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"acme\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.type").value("invalid_request_error"))
+                .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.containsString("acme")));
+    }
+
+    @Test
+    void patchingAnUnknownClientIdIsRejectedWith400() throws Exception {
+        mockMvc.perform(patch("/api/clients/999999")
+                        .header(AdminAuthFilter.ADMIN_KEY_HEADER, ADMIN_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.type").value("invalid_request_error"));
+    }
+
     private static String uniqueBody() {
         return "{\"model\":\"claude-3-5-sonnet-20241022\",\"messages\":[{\"role\":\"user\","
                 + "\"content\":\"" + UUID.randomUUID() + "\"}],\"max_tokens\":10}";
