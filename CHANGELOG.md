@@ -166,6 +166,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   thresholds, CI/GHCR, and configuration (replacing the frozen Phase 0 content).
 - **Docs — README documents v2** (failover, per-model routing, SSE streaming),
   including the noted streaming-failover scope boundary.
+- **Docs — README documents v3** (multi-tenant control, observability with
+  p50/p95/p99, ratcheted gates) and adds a "Deliberately out of scope" section.
 
 ### Notes
 

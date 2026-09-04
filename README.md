@@ -3,14 +3,16 @@
 [![CI](https://github.com/KaloyanYordanov12/llm-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/KaloyanYordanov12/llm-gateway/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-An Anthropic-compatible LLM gateway: a single self-hosted service that sits in
-front of LLM providers and adds the operational layer you actually need in
-production. Clients call it with an `x-api-key`; it authenticates them,
-rate-limits per client, serves responses from a cache, and proxies to a provider
-behind retry + a circuit breaker — with **automatic failover across a provider
-chain, config-driven per-model routing, and opt-in SSE streaming** — while
-recording token usage and cost. A read-only admin API and a bundled dashboard
-expose the numbers.
+An Anthropic-compatible, **multi-tenant, observable** LLM gateway: a single
+self-hosted service that sits in front of LLM providers and adds the operational
+layer you actually need in production. Clients call it with an `x-api-key`; it
+authenticates them, enforces **per-client rate limits and hard budget caps**,
+serves responses from a cache, and proxies to a provider behind retry + a circuit
+breaker — with **automatic failover across a provider chain, config-driven
+per-model routing, and opt-in SSE streaming** — while recording token usage and
+cost. Micrometer metrics and request-latency percentiles (**p50/p95/p99**) make
+it observable; an admin API manages tenants and a bundled dashboard shows the
+numbers.
 
 Built with Java 25 and Spring Boot 4.1.1, correctness enforced by an
 un-cheatable `mvnw verify` (coverage, mutation, static analysis), containerized,
@@ -111,6 +113,32 @@ Three capabilities layered on the v1 core, each proven with the same gated tests
   The `stream` flag is excluded from the cache key, and the non-streaming path is
   byte-for-byte unchanged.
 
+## v3 capabilities
+
+Two capabilities that make it multi-tenant and observable, proven with the same
+gated tests.
+
+- **Multi-tenant control.** Each client can carry its own **rate limit** (its
+  token-bucket capacity overrides the global default; unset = the default, so
+  existing clients are unchanged) and a **hard budget cap**. When a client's
+  accumulated cost reaches its cap, further requests are rejected with
+  `402 budget_exceeded` **before any provider call** — so a cap is never
+  overspent, and it's demonstrable in demo mode from the pricing table's computed
+  cost (no real spend). Tenancy is managed through the admin API: `POST /api/clients`
+  mints a client and returns its raw `sk-gw-` key **once** (only the bcrypt hash is
+  stored), `PATCH /api/clients/{id}` updates `rate_limit` / `budget` / `enabled`.
+  The dashboard shows each client's limit, budget, and spend-vs-cap. A client
+  `x-api-key` can never reach the admin routes.
+- **Observability.** Micrometer instruments requests, cache hits/misses, provider
+  calls, failovers, and rate-limit / budget rejections (tagged per client where it
+  makes sense), and times every proxied request. Request-latency **p50/p95/p99**
+  (computed deterministically, so they're unit-tested) are exposed on
+  `GET /api/stats` and a dashboard latency panel. A Prometheus scrape is available
+  at `GET /api/metrics` — **admin-key protected, deliberately not on the public
+  actuator surface**, because a public metrics endpoint leaks internals (per-client
+  ids, spend, traffic shape). Protecting it is the intended posture, not an
+  oversight.
+
 ## Correctness / gates
 
 A single `./mvnw verify` compiles, runs every test, and fails the build unless all
@@ -118,13 +146,14 @@ of these hold. The same command runs in CI on every push and pull request.
 
 | Gate | Tool | Threshold | Enforcement |
 |---|---|---|---|
-| Test coverage | JaCoCo | ≥ 85% line / 80% branch | fails `mvnw verify` |
-| Mutation score | PIT | ≥ 70% | fails `mvnw verify` |
+| Test coverage | JaCoCo | ≥ 88% line / 80% branch | fails `mvnw verify` |
+| Mutation score | PIT | ≥ 80% | fails `mvnw verify` |
 | Static analysis | Checkstyle | 0 violations | fails `mvnw verify` |
 | Static analysis | SpotBugs | 0 findings (effort=max, threshold=low) | fails `mvnw verify` |
 
-169 tests, all green. Thresholds are read straight from `pom.xml`; they ratchet
-up, never down.
+227 tests, all green. Thresholds are read straight from `pom.xml`; they ratchet
+up, never down — the line and mutation gates were raised (85→88%, 70→80%) in v3
+once the suite genuinely cleared the higher bar.
 
 > **PIT note:** mutation testing is *enforced from Phase 1* (the first phase with
 > real branching logic). It was deferred only in Phase 0, where a health endpoint
@@ -207,14 +236,25 @@ Resilience4j (retry + circuit breaker) · Caffeine cache · SSE streaming via Sp
 dashboard built into the jar. Production runs the jar under systemd; a multi-stage
 Docker image is also built and published to GHCR as a reproducible artifact.
 
-## Roadmap / known limitations
+## Deliberately out of scope
 
-- **Streaming failover across providers is not yet implemented.** Non-streaming
-  failover is fully live, and streaming works — but switching providers *mid-stream*
-  (transparently continuing a streamed response on a second provider after the first
-  fails partway through) is a deliberate scope boundary, not an omission: the two
-  providers' streaming formats differ, so it's a noted future enhancement. A
-  pre-first-byte streaming failure surfaces cleanly to the client.
+These were left out on purpose — each is a scope decision, not a gap:
+
+- **Redis / horizontal scale.** The gateway is single-instance; the rate-limiter
+  buckets and response cache live in-process. Shared state (Redis) would solve a
+  problem this deployment doesn't have. If it needed to scale horizontally, the
+  token buckets and the cache are the two pieces that would move to Redis — the
+  interfaces are already narrow enough to swap.
+- **Streaming failover across providers.** Non-streaming failover is fully live,
+  and streaming works — but switching providers *mid-stream* (transparently
+  continuing a streamed response on a second provider after the first fails partway
+  through) is a deliberate boundary: the two providers' streaming formats differ,
+  so it's a noted future enhancement. A pre-first-byte streaming failure still
+  surfaces cleanly to the client.
+- **A full interactive write-UI.** Multi-tenant management is **API-first** — the
+  admin endpoints are the tested surface. The dashboard is read-only by design (it
+  displays per-client config and telemetry); a create-client form was deliberately
+  skipped rather than duplicate tested logic in the SPA.
 
 ## Load testing
 
