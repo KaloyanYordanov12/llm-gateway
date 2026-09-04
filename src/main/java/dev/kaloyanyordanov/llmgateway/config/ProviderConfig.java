@@ -1,5 +1,6 @@
 package dev.kaloyanyordanov.llmgateway.config;
 
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import dev.kaloyanyordanov.llmgateway.provider.AnthropicProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.FailoverProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
@@ -68,11 +69,12 @@ public class ProviderConfig {
     }
 
     @Bean
-    public ProviderRegistry providerRegistry(List<ProviderClient> providers, ProviderProperties properties) {
+    public ProviderRegistry providerRegistry(List<ProviderClient> providers, ProviderProperties properties,
+            GatewayMetrics metrics) {
         // Live mode with a configured chain routes the default through a failover
         // client; otherwise the default is a single provider (v1 behavior).
         if (properties.mode() == ProviderMode.LIVE && !properties.chain().isEmpty()) {
-            FailoverProviderClient failover = buildFailover(properties.chain(), providers);
+            FailoverProviderClient failover = buildFailover(properties.chain(), providers, metrics);
             List<ProviderClient> all = new ArrayList<>(providers);
             all.add(failover);
             return new ProviderRegistry(all, FailoverProviderClient.FAILOVER_NAME);
@@ -86,9 +88,11 @@ public class ProviderConfig {
      *
      * @param chain     ordered provider names
      * @param providers all registered providers
+     * @param metrics   observability hooks (failover counter)
      * @return the failover client wrapping the resolved chain
      */
-    private static FailoverProviderClient buildFailover(List<String> chain, List<ProviderClient> providers) {
+    private static FailoverProviderClient buildFailover(List<String> chain, List<ProviderClient> providers,
+            GatewayMetrics metrics) {
         Map<String, ProviderClient> byName = new LinkedHashMap<>();
         for (ProviderClient provider : providers) {
             byName.put(provider.name(), provider);
@@ -102,7 +106,7 @@ public class ProviderConfig {
             }
             ordered.add(provider);
         }
-        return new FailoverProviderClient(ordered);
+        return new FailoverProviderClient(ordered, metrics::failover);
     }
 
     /**

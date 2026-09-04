@@ -102,4 +102,32 @@ class FailoverProviderClientTest {
         assertThatThrownBy(() -> new FailoverProviderClient(List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void failoverCallbackFiresOncePerFailedProvider() {
+        when(primary.createMessage(any())).thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
+        when(secondary.createMessage(any())).thenReturn(SECONDARY);
+        int[] failovers = {0};
+
+        FailoverProviderClient chain =
+                new FailoverProviderClient(List.of(primary, secondary), () -> failovers[0]++);
+        assertThat(chain.createMessage(REQUEST)).isSameAs(SECONDARY);
+
+        // The primary failed and we moved on: exactly one failover event.
+        assertThat(failovers[0]).isEqualTo(1);
+    }
+
+    @Test
+    void failoverCallbackFiresForEachDownProviderWhenAllFail() {
+        when(primary.createMessage(any())).thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
+        when(secondary.createMessage(any())).thenThrow(new ResourceAccessException("down"));
+        int[] failovers = {0};
+
+        FailoverProviderClient chain =
+                new FailoverProviderClient(List.of(primary, secondary), () -> failovers[0]++);
+        assertThatThrownBy(() -> chain.createMessage(REQUEST))
+                .isInstanceOf(AllProvidersUnavailableException.class);
+
+        assertThat(failovers[0]).isEqualTo(2);
+    }
 }

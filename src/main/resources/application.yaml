@@ -36,7 +36,10 @@ management:
   endpoints:
     web:
       exposure:
-        # Phase 0: only the health endpoint is exposed.
+        # Only the health endpoint is public. The Prometheus scrape is
+        # deliberately NOT added here: a public metrics endpoint leaks internals
+        # (per-client ids, spend, traffic shape). It is served instead through the
+        # admin-key-guarded /api/metrics route (see PrometheusController).
         include: health
   endpoint:
     health:

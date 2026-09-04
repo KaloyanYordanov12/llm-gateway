@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.kaloyanyordanov.llmgateway.cache.ResponseCacheService;
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import dev.kaloyanyordanov.llmgateway.provider.routing.ProviderRouter;
 import dev.kaloyanyordanov.llmgateway.usage.PricingService;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
@@ -31,8 +32,9 @@ class ProxyServiceTest {
     private final ResponseCacheService cache = mock(ResponseCacheService.class);
     private final PricingService pricingService = mock(PricingService.class);
     private final UsageService usageService = mock(UsageService.class);
+    private final GatewayMetrics metrics = mock(GatewayMetrics.class);
     private final ProxyService service =
-            new ProxyService(providerRouter, cache, pricingService, usageService);
+            new ProxyService(providerRouter, cache, pricingService, usageService, metrics);
 
     @Test
     void unknownModelIsRejectedBeforeAnyProviderOrCacheAccess() {
@@ -66,5 +68,16 @@ class ProxyServiceTest {
 
         verify(usageService).record(CLIENT_ID, "m", 12, 5, new BigDecimal("0.10"));
         verify(cache).put(REQUEST, RESPONSE);
+        verify(metrics).providerCall();
+    }
+
+    @Test
+    void cacheHitDoesNotCountAProviderCall() {
+        when(pricingService.isKnown("m")).thenReturn(true);
+        when(cache.get(REQUEST)).thenReturn(Optional.of(RESPONSE));
+
+        service.handle(REQUEST, CLIENT_ID);
+
+        verify(metrics, never()).providerCall();
     }
 }

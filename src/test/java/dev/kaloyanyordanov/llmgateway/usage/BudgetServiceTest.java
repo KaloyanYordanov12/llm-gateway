@@ -3,9 +3,12 @@ package dev.kaloyanyordanov.llmgateway.usage;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +17,8 @@ class BudgetServiceTest {
     private static final long CLIENT_ID = 7L;
 
     private final UsageService usageService = mock(UsageService.class);
-    private final BudgetService service = new BudgetService(usageService);
+    private final GatewayMetrics metrics = mock(GatewayMetrics.class);
+    private final BudgetService service = new BudgetService(usageService, metrics);
 
     private void stubSpend(String spent) {
         when(usageService.totalsForClient(CLIENT_ID))
@@ -43,6 +47,16 @@ class BudgetServiceTest {
 
         assertThatThrownBy(() -> service.enforce(CLIENT_ID, new BigDecimal("1.00")))
                 .isInstanceOf(BudgetExceededException.class);
+        verify(metrics).budgetRejection(CLIENT_ID);
+    }
+
+    @Test
+    void aPassingRequestIsNotCountedAsABudgetRejection() {
+        stubSpend("0.50");
+
+        service.enforce(CLIENT_ID, new BigDecimal("1.00"));
+
+        verify(metrics, never()).budgetRejection(CLIENT_ID);
     }
 
     @Test

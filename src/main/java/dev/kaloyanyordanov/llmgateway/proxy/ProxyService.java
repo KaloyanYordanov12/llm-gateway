@@ -1,6 +1,7 @@
 package dev.kaloyanyordanov.llmgateway.proxy;
 
 import dev.kaloyanyordanov.llmgateway.cache.ResponseCacheService;
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import dev.kaloyanyordanov.llmgateway.provider.routing.ProviderRouter;
 import dev.kaloyanyordanov.llmgateway.usage.PricingService;
 import dev.kaloyanyordanov.llmgateway.usage.UnknownModelException;
@@ -23,16 +24,18 @@ public class ProxyService {
     private final ResponseCacheService cache;
     private final PricingService pricingService;
     private final UsageService usageService;
+    private final GatewayMetrics metrics;
 
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
             justification = "Collaborators are Spring-managed singletons; holding the shared "
                     + "references is intentional DI, not mutable-state exposure.")
     public ProxyService(ProviderRouter providerRouter, ResponseCacheService cache,
-            PricingService pricingService, UsageService usageService) {
+            PricingService pricingService, UsageService usageService, GatewayMetrics metrics) {
         this.providerRouter = providerRouter;
         this.cache = cache;
         this.pricingService = pricingService;
         this.usageService = usageService;
+        this.metrics = metrics;
     }
 
     /**
@@ -51,6 +54,7 @@ public class ProxyService {
         if (cached.isPresent()) {
             return cached.get();
         }
+        metrics.providerCall();
         MessagesResponse response = providerRouter.route(request);
         recordUsage(clientId, request.model(), response);
         cache.put(request, response);

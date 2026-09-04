@@ -1,6 +1,7 @@
 package dev.kaloyanyordanov.llmgateway.proxy.streaming;
 
 import dev.kaloyanyordanov.llmgateway.cache.ResponseCacheService;
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import dev.kaloyanyordanov.llmgateway.proxy.MessagesRequest;
 import dev.kaloyanyordanov.llmgateway.proxy.MessagesResponse;
 import dev.kaloyanyordanov.llmgateway.proxy.Usage;
@@ -37,17 +38,20 @@ public class StreamingProxyService {
     private final PricingService pricingService;
     private final UsageService usageService;
     private final Executor streamingExecutor;
+    private final GatewayMetrics metrics;
 
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
             justification = "Collaborators are Spring-managed singletons; holding the shared "
                     + "references is intentional DI, not mutable-state exposure.")
     public StreamingProxyService(StreamingProviderClient streamingClient, ResponseCacheService cache,
-            PricingService pricingService, UsageService usageService, Executor streamingExecutor) {
+            PricingService pricingService, UsageService usageService, Executor streamingExecutor,
+            GatewayMetrics metrics) {
         this.streamingClient = streamingClient;
         this.cache = cache;
         this.pricingService = pricingService;
         this.usageService = usageService;
         this.streamingExecutor = streamingExecutor;
+        this.metrics = metrics;
     }
 
     /**
@@ -68,6 +72,7 @@ public class StreamingProxyService {
             replayFromCache(emitter, cached.get());
             return emitter;
         }
+        metrics.providerCall();
         streamingExecutor.execute(() -> runStream(request, clientId, emitter));
         return emitter;
     }

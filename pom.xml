@@ -31,6 +31,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Micrometer Prometheus registry (§A2, v3.2): exposes metrics in the
+             Prometheus text format. Version managed by the Spring Boot BOM. The
+             scrape endpoint is served only through the admin-guarded /api/metrics
+             route; the public actuator exposure is deliberately not widened. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
 
         <!-- Persistence (§A2): JPA is the locked choice over raw JDBC. -->
         <dependency>

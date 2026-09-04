@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.kaloyanyordanov.llmgateway.cache.ResponseCacheService;
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import dev.kaloyanyordanov.llmgateway.proxy.Message;
 import dev.kaloyanyordanov.llmgateway.proxy.MessagesRequest;
 import dev.kaloyanyordanov.llmgateway.usage.PricingService;
@@ -36,9 +37,10 @@ class StreamingProxyServiceTest {
     private final ResponseCacheService cache = mock(ResponseCacheService.class);
     private final PricingService pricingService = mock(PricingService.class);
     private final UsageService usageService = mock(UsageService.class);
+    private final GatewayMetrics metrics = mock(GatewayMetrics.class);
     // Direct executor: run the streaming task inline so effects are observable.
     private final StreamingProxyService service = new StreamingProxyService(
-            streamingClient, cache, pricingService, usageService, Runnable::run);
+            streamingClient, cache, pricingService, usageService, Runnable::run, metrics);
 
     private Answer<Void> populate(boolean complete) {
         return invocation -> {

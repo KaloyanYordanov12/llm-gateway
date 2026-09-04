@@ -1,5 +1,6 @@
 package dev.kaloyanyordanov.llmgateway.usage;
 
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 
@@ -14,9 +15,11 @@ import org.springframework.stereotype.Service;
 public class BudgetService {
 
     private final UsageService usageService;
+    private final GatewayMetrics metrics;
 
-    public BudgetService(UsageService usageService) {
+    public BudgetService(UsageService usageService, GatewayMetrics metrics) {
         this.usageService = usageService;
+        this.metrics = metrics;
     }
 
     /**
@@ -32,6 +35,7 @@ public class BudgetService {
         }
         BigDecimal spent = usageService.totalsForClient(clientId).totalCost();
         if (spent.compareTo(budget) >= 0) {
+            metrics.budgetRejection(clientId);
             throw new BudgetExceededException(spent, budget);
         }
     }

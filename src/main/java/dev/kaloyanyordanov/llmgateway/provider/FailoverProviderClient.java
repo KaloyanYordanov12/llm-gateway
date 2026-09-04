@@ -24,15 +24,25 @@ public final class FailoverProviderClient implements ProviderClient {
     public static final String FAILOVER_NAME = "failover";
 
     private final List<ProviderClient> chain;
+    private final Runnable onFailover;
 
     /**
      * @param chain the ordered provider chain (must be non-empty)
      */
     public FailoverProviderClient(List<ProviderClient> chain) {
+        this(chain, () -> { });
+    }
+
+    /**
+     * @param chain      the ordered provider chain (must be non-empty)
+     * @param onFailover invoked once each time a provider fails and the next is tried
+     */
+    public FailoverProviderClient(List<ProviderClient> chain, Runnable onFailover) {
         if (chain.isEmpty()) {
             throw new IllegalArgumentException("Failover chain must not be empty");
         }
         this.chain = List.copyOf(chain);
+        this.onFailover = onFailover;
     }
 
     @Override
@@ -49,6 +59,7 @@ public final class FailoverProviderClient implements ProviderClient {
             } catch (CallNotPermittedException | HttpServerErrorException | ResourceAccessException failure) {
                 // Availability failures warrant failover; a 4xx is not caught here and propagates.
                 lastFailure = failure;
+                onFailover.run();
             }
         }
         throw new AllProvidersUnavailableException(lastFailure);

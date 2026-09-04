@@ -2,7 +2,9 @@ package dev.kaloyanyordanov.llmgateway.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
+import dev.kaloyanyordanov.llmgateway.metrics.GatewayMetrics;
 import dev.kaloyanyordanov.llmgateway.provider.FailoverProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderClient;
 import dev.kaloyanyordanov.llmgateway.provider.ProviderMode;
@@ -18,6 +20,7 @@ import org.springframework.web.client.RestClient;
 class ProviderConfigTest {
 
     private final ProviderConfig config = new ProviderConfig();
+    private final GatewayMetrics metrics = mock(GatewayMetrics.class);
 
     private static ProviderProperties properties(ProviderMode mode) {
         return properties(mode, List.of());
@@ -54,7 +57,7 @@ class ProviderConfigTest {
         assertThat(stub).isInstanceOf(StubProviderClient.class);
 
         // live mode defaults to the anthropic client
-        ProviderRegistry registry = config.providerRegistry(List.of(anthropic, stub), properties);
+        ProviderRegistry registry = config.providerRegistry(List.of(anthropic, stub), properties, metrics);
         assertThat(registry.getDefault()).isSameAs(anthropic);
     }
 
@@ -74,7 +77,7 @@ class ProviderConfigTest {
         ProviderClient anthropic = anthropic(properties);
         ProviderClient stub = config.stubProviderClient();
 
-        ProviderRegistry registry = config.providerRegistry(List.of(anthropic, stub), properties);
+        ProviderRegistry registry = config.providerRegistry(List.of(anthropic, stub), properties, metrics);
 
         assertThat(registry.getDefault()).isSameAs(stub);
     }
@@ -83,7 +86,8 @@ class ProviderConfigTest {
     void liveChainMakesFailoverTheDefault() {
         ProviderProperties properties = properties(ProviderMode.LIVE, List.of("anthropic", "openai"));
         ProviderRegistry registry = config.providerRegistry(
-                List.of(anthropic(properties), openai(properties), config.stubProviderClient()), properties);
+                List.of(anthropic(properties), openai(properties), config.stubProviderClient()),
+                properties, metrics);
 
         assertThat(registry.getDefault()).isInstanceOf(FailoverProviderClient.class);
         assertThat(registry.getDefault().name()).isEqualTo("failover");
@@ -93,7 +97,7 @@ class ProviderConfigTest {
     void unknownProviderInChainFailsFast() {
         ProviderProperties properties = properties(ProviderMode.LIVE, List.of("anthropic", "ghost"));
 
-        assertThatThrownBy(() -> config.providerRegistry(List.of(anthropic(properties)), properties))
+        assertThatThrownBy(() -> config.providerRegistry(List.of(anthropic(properties)), properties, metrics))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("ghost");
     }
