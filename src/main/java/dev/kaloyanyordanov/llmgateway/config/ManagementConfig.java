@@ -2,6 +2,8 @@ package dev.kaloyanyordanov.llmgateway.config;
 
 import dev.kaloyanyordanov.llmgateway.management.AdminAuthFilter;
 import dev.kaloyanyordanov.llmgateway.management.ManagementProperties;
+import dev.kaloyanyordanov.llmgateway.provider.ProviderMode;
+import dev.kaloyanyordanov.llmgateway.provider.ProviderProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -10,7 +12,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Wiring for the management API: enables {@link ManagementProperties} and
- * registers the {@link AdminAuthFilter} guarding all {@code /api/*} routes.
+ * registers the {@link AdminAuthFilter} guarding all {@code /api/*} routes. In
+ * demo mode the filter also opens the read-only telemetry paths to unauthenticated
+ * {@code GET}s; in live mode (the default) nothing is exempt.
  */
 @Configuration
 @EnableConfigurationProperties(ManagementProperties.class)
@@ -23,10 +27,11 @@ public class ManagementConfig {
     public static final int ADMIN_FILTER_ORDER = 10;
 
     @Bean
-    public FilterRegistrationBean<AdminAuthFilter> adminAuthFilter(
-            ManagementProperties properties, JsonMapper jsonMapper) {
-        FilterRegistrationBean<AdminAuthFilter> registration =
-                new FilterRegistrationBean<>(new AdminAuthFilter(properties.key(), jsonMapper));
+    public FilterRegistrationBean<AdminAuthFilter> adminAuthFilter(ManagementProperties properties,
+            ProviderProperties providerProperties, JsonMapper jsonMapper) {
+        boolean demoReadOpen = providerProperties.mode() == ProviderMode.DEMO;
+        FilterRegistrationBean<AdminAuthFilter> registration = new FilterRegistrationBean<>(
+                new AdminAuthFilter(properties.key(), demoReadOpen, jsonMapper));
         registration.addUrlPatterns(MANAGEMENT_PATH_PATTERN);
         registration.setOrder(ADMIN_FILTER_ORDER);
         return registration;

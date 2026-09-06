@@ -83,6 +83,28 @@ body {
 }
 .keybar button:hover, .refresh button:hover { background: rgba(79, 214, 201, 0.22); }
 
+/* ── Demo-mode indicator (public read-only view) ── */
+.demobar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  padding: 12px 16px;
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  background: var(--warn-dim);
+}
+.demobar-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--warn);
+  font-weight: 600;
+}
+.demobar-text { color: var(--ink); font-size: 13px; }
+
 /* ── Section labels ── */
 .rail {
   display: flex;

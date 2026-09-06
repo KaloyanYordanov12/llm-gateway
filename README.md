@@ -20,9 +20,16 @@ and deployed live.
 
 ## Live demo
 
-**<https://gateway.kaloyanyordanov.dev/>** — open the dashboard and enter the
-admin key to view live telemetry; health is at
+**<https://gateway.kaloyanyordanov.dev/>** — open the dashboard to see the gateway
+running; health is at
 [`/actuator/health`](https://gateway.kaloyanyordanov.dev/actuator/health).
+
+Because the public box runs in demo mode, its read-only telemetry (gauges,
+latency, client table) is a public view: it loads with no key, so a visitor sees
+the system working without one. Managing clients (create, edit, disable) still
+requires the admin key, entered in the dashboard and held in memory only. This
+public read is demo-mode only. A `live` deployment keeps every `/api/*` route,
+read and write, behind the admin key.
 
 > **The public deployment runs in demo mode and costs nothing, by design.** It is
 > configured with `GATEWAY_PROVIDER_MODE=demo`, which selects a **stub provider**
@@ -195,7 +202,7 @@ or image** — the values below are placeholders.
 | Variable | Purpose | Default |
 |---|---|---|
 | `GATEWAY_PROVIDER_MODE` | `live` proxies to the real provider; `demo` uses the no-network stub | `live` |
-| `GATEWAY_ADMIN_KEY` | Admin key required on every `/api/*` route (`x-admin-key`) | `dev-admin-key` (dev only — override) |
+| `GATEWAY_ADMIN_KEY` | Admin key for `/api/*` (`x-admin-key`). Required on every route in `live` mode; in `demo` mode the read-only telemetry GETs are public and only writes need it | `dev-admin-key` (dev only — override) |
 | `DB_URL` | Postgres JDBC URL | `jdbc:postgresql://localhost:5432/gateway` |
 | `DB_USER` / `DB_PASSWORD` | Postgres credentials | `gateway` / `gateway` |
 
@@ -220,8 +227,12 @@ configuration (application config; empty/absent keys preserve v1 behavior):
   Add `"stream": true` to the body for a streamed (SSE) response; omit it for the
   standard JSON response.
 - `GET /api/clients` · `GET /api/usage?client=<id>` · `GET /api/stats` — read-only
-  admin API, authenticated with `x-admin-key`. Never exposes key hashes.
-  `/api/stats` includes request-latency p50/p95/p99.
+  telemetry, authenticated with `x-admin-key`. Never exposes key hashes.
+  `/api/stats` includes request-latency p50/p95/p99. In demo mode
+  (`GATEWAY_PROVIDER_MODE=demo`) these three read paths are public: an
+  unauthenticated `GET` is served so a demo box shows its telemetry without a key.
+  The exemption is narrow, and it is GET-only, these exact read paths only, and
+  demo-mode only. In `live` mode they require the admin key like every other route.
 - `POST /api/clients` · `PATCH /api/clients/{id}` — admin-only client management:
   create a client (generates an `sk-gw-` key, returns the raw key **once**, stores
   only its bcrypt hash) and update its `rate_limit` / `budget` / `enabled`.

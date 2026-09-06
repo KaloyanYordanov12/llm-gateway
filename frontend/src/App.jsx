@@ -160,7 +160,7 @@ function CreateClientForm({ onCreate }) {
   );
 }
 
-function ClientRow({ client, adminKey, onChanged }) {
+function ClientRow({ client, adminKey, onChanged, readOnly }) {
   const [editing, setEditing] = useState(false);
   const [rate, setRate] = useState('');
   const [budget, setBudget] = useState('');
@@ -275,7 +275,7 @@ function ClientRow({ client, adminKey, onChanged }) {
         <td className="num">{money(client.usage?.total_cost)}</td>
         <td className={use.over ? 'num cap-over' : 'num'}>{use.text}</td>
         <td className="actions">
-          {editing ? (
+          {readOnly ? null : editing ? (
             <>
               <button type="button" onClick={save} disabled={busy}>Save</button>
               <button type="button" className="ghost" onClick={cancel} disabled={busy}>Cancel</button>
@@ -307,10 +307,11 @@ export default function App() {
   const [loadedAt, setLoadedAt] = useState(null);
   const [reveal, setReveal] = useState(null);
 
+  // Load the read-only telemetry. This runs with or without a key: in demo mode
+  // the backend serves these GETs unauthenticated (public read-only view), so an
+  // empty key still loads; in live mode the same call returns 401 and we fall
+  // back to the "enter admin key" prompt. Writes always require a key.
   const load = useCallback(async (key) => {
-    if (!key) {
-      return;
-    }
     try {
       const [statsData, clientList] = await Promise.all([fetchStats(key), fetchClients(key)]);
       const withUsage = await Promise.all(
@@ -327,9 +328,6 @@ export default function App() {
 
   useEffect(() => {
     load(adminKey);
-    if (!adminKey) {
-      return undefined;
-    }
     const timer = setInterval(() => load(adminKey), REFRESH_MS);
     return () => clearInterval(timer);
   }, [adminKey, load]);
@@ -344,6 +342,14 @@ export default function App() {
     setReveal({ name: created.name, apiKey: created.api_key });
     await load(adminKey);
   };
+
+  const authed = adminKey !== '';
+  const hasData = stats !== null;
+  // No data yet and no error means the first load is still in flight.
+  const loading = !hasData && error === null;
+  // Data with no key entered can only mean the demo public read view: in live
+  // mode a keyless read is rejected, so we would have no data instead.
+  const publicDemo = hasData && !authed;
 
   return (
     <div className="console">
@@ -365,20 +371,36 @@ export default function App() {
         </div>
       </header>
 
-      {!adminKey ? (
-        <p className="notice" style={{ marginTop: 28 }}>
-          Enter the admin key to read live gateway telemetry and manage clients.
-        </p>
-      ) : error === 'unauthorized' ? (
-        <p className="notice alert" style={{ marginTop: 28 }}>
-          Admin key rejected. Check the key and connect again.
-        </p>
-      ) : error === 'unreachable' ? (
-        <p className="notice alert" style={{ marginTop: 28 }}>
-          Cannot reach the gateway API.
-        </p>
+      {!hasData ? (
+        loading ? (
+          <p className="notice" style={{ marginTop: 28 }}>
+            Connecting to gateway telemetry…
+          </p>
+        ) : error === 'unreachable' ? (
+          <p className="notice alert" style={{ marginTop: 28 }}>
+            Cannot reach the gateway API.
+          </p>
+        ) : authed ? (
+          <p className="notice alert" style={{ marginTop: 28 }}>
+            Admin key rejected. Check the key and connect again.
+          </p>
+        ) : (
+          <p className="notice" style={{ marginTop: 28 }}>
+            Enter the admin key to read gateway telemetry and manage clients.
+          </p>
+        )
       ) : (
         <>
+          {publicDemo ? (
+            <div className="demobar">
+              <span className="demobar-tag">Demo mode</span>
+              <span className="demobar-text">
+                Read-only public view. Telemetry runs on the no-spend stub provider. Enter the
+                admin key above to manage clients.
+              </span>
+            </div>
+          ) : null}
+
           <div className="rail">System</div>
           <div className="gauges">
             <Gauge label="Requests" value={int.format(stats?.total_requests ?? 0)} sub="billable calls" />
@@ -396,9 +418,13 @@ export default function App() {
             <Gauge label="p99" value={`${int.format(stats?.p99_millis ?? 0)} ms`} sub="99th percentile" />
           </div>
 
-          <div className="rail">Create client</div>
-          <CreateClientForm onCreate={handleCreate} />
-          {reveal ? <KeyReveal reveal={reveal} onDismiss={() => setReveal(null)} /> : null}
+          {authed ? (
+            <>
+              <div className="rail">Create client</div>
+              <CreateClientForm onCreate={handleCreate} />
+              {reveal ? <KeyReveal reveal={reveal} onDismiss={() => setReveal(null)} /> : null}
+            </>
+          ) : null}
 
           <div className="rail">Clients</div>
           <div className="panel">
@@ -420,7 +446,7 @@ export default function App() {
               <tbody>
                 {clients.map((client) => (
                   <ClientRow key={client.id} client={client} adminKey={adminKey}
-                    onChanged={() => load(adminKey)} />
+                    onChanged={() => load(adminKey)} readOnly={!authed} />
                 ))}
                 {clients.length === 0 ? (
                   <tr><td className="empty" colSpan="10">No clients registered.</td></tr>
@@ -435,7 +461,8 @@ export default function App() {
           <div className="rail" style={{ justifyContent: 'flex-start' }}>
             <span className="status">
               <span className="pulse" />
-              live · updated {loadedAt ? loadedAt.toLocaleTimeString() : '—'}
+              {publicDemo ? 'demo · read-only' : 'live'} · updated{' '}
+              {loadedAt ? loadedAt.toLocaleTimeString() : '—'}
             </span>
           </div>
         </>

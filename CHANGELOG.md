@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **v3.6, Public read-only demo view (demo mode only).** In
+  `GATEWAY_PROVIDER_MODE=demo`, unauthenticated `GET` requests to the read-only
+  telemetry paths (`/api/stats`, `/api/clients`, `/api/usage`) are served without
+  the admin key, so the public demo box shows the system running to a visitor who
+  has no key. The relaxation is enforced in `AdminAuthFilter` and is narrow on
+  purpose: demo mode, and `GET`, and one of those exact read paths. Writes
+  (`POST`/`PATCH`), any other `/api/*` path (`/api/metrics` included), and the whole
+  surface in `live` mode stay behind the admin key, so the `live` default leaks
+  nothing. The dashboard now loads its telemetry with no key entered when the box
+  is in demo mode, shows a "Demo mode, read-only public view" indicator, and keeps
+  the create/edit/disable controls behind the admin key (held in memory only). Both
+  modes are covered by HTTP tests: demo serves the read GETs and still rejects
+  writes and non-read paths, and live keeps every read path locked.
 - **v3.5 — Admin panel (tenant management UI).** The dashboard gains a read-write
   admin panel over the existing admin API: a create-client form with a one-time
   raw-key reveal (copy-once, held in transient React state only, never written to

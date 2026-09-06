@@ -1,8 +1,22 @@
 // Thin fetch helpers for the management API. All logic lives in the backend;
 // these just attach the admin key and parse JSON.
+//
+// The read helpers work with no key too: in demo mode the backend serves the
+// telemetry GETs unauthenticated, so an empty key sends no admin header and the
+// public read still succeeds. In live mode the same call returns 401.
+
+// Only attach the admin header when a key is present, so a public demo read is a
+// genuinely keyless request rather than one carrying an empty credential.
+function adminHeaders(adminKey, extra) {
+  const headers = { ...extra };
+  if (adminKey) {
+    headers['x-admin-key'] = adminKey;
+  }
+  return headers;
+}
 
 async function getJson(path, adminKey) {
-  const response = await fetch(path, { headers: { 'x-admin-key': adminKey } });
+  const response = await fetch(path, { headers: adminHeaders(adminKey) });
   if (response.status === 401) {
     throw new Error('unauthorized');
   }
@@ -23,7 +37,7 @@ export const fetchUsage = (adminKey, clientId) =>
 async function sendJson(method, path, adminKey, body) {
   const response = await fetch(path, {
     method,
-    headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+    headers: adminHeaders(adminKey, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(body),
   });
   if (response.status === 401) {
