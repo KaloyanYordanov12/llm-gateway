@@ -23,15 +23,26 @@ function cacheHitRate(stats) {
   return `${(((stats.cache_hits ?? 0) / total) * 100).toFixed(1)}%`;
 }
 
-// Per-client spend against the hard budget cap. No cap => no meter.
+// Per-client spend against the hard budget cap. No cap => no meter. Same
+// underlying data as before (spend vs budget); the extra fields are only for
+// rendering it as a progress bar: `pct` is clamped to [0,100] for the fill width
+// while `text` keeps the true percentage, and `level` picks the fill color.
 function budgetUse(client) {
   if (client.budget == null) {
-    return { text: '—', over: false };
+    return { has: false, text: '—', over: false, pct: 0, level: 'accent' };
   }
   const spend = Number(client.usage?.total_cost ?? 0);
   const cap = Number(client.budget);
-  const pct = cap > 0 ? (spend / cap) * 100 : 100;
-  return { text: `${pct.toFixed(0)}%`, over: spend >= cap };
+  const rawPct = cap > 0 ? (spend / cap) * 100 : 100;
+  const over = spend >= cap;
+  const level = over ? 'red' : rawPct >= 80 ? 'amber' : 'accent';
+  return {
+    has: true,
+    text: `${rawPct.toFixed(0)}%`,
+    over,
+    pct: Math.max(0, Math.min(100, rawPct)),
+    level,
+  };
 }
 
 // Validate an optional positive-integer rate limit from a text field.
@@ -63,12 +74,18 @@ function readableError(e) {
   return e.message === 'unauthorized' ? 'Admin key rejected.' : e.message;
 }
 
-function Gauge({ label, value, sub, warn }) {
+// A KPI/latency card. `tone` colors the top accent bar (and the latency dot);
+// `warn` colors the hero number when a metric is in an alert state. Purely
+// presentational: the value passed in already comes from the real API.
+function Gauge({ label, value, sub, tone = 'accent', dot = false, warn = false }) {
   return (
-    <div className={warn ? 'gauge warn' : 'gauge'}>
-      <div className="label">{label}</div>
-      <div className="readout">{value}</div>
-      {sub ? <div className="sub">{sub}</div> : null}
+    <div className={`card kpi tone-${tone}`}>
+      <div className="kpi-label">
+        {dot ? <span className="kpi-dot" aria-hidden="true" /> : null}
+        {label}
+      </div>
+      <div className={warn ? 'kpi-value warn' : 'kpi-value'}>{value}</div>
+      {sub ? <div className="kpi-sub">{sub}</div> : null}
     </div>
   );
 }
@@ -273,7 +290,16 @@ function ClientRow({ client, adminKey, onChanged, readOnly }) {
         <td className="num">{int.format(client.usage?.total_input_tokens ?? 0)}</td>
         <td className="num">{int.format(client.usage?.total_output_tokens ?? 0)}</td>
         <td className="num">{money(client.usage?.total_cost)}</td>
-        <td className={use.over ? 'num cap-over' : 'num'}>{use.text}</td>
+        <td className="num spendcap">
+          {use.has ? (
+            <div className="bar-wrap">
+              <div className="bar-track">
+                <div className={`bar-fill ${use.level}`} style={{ width: `${use.pct}%` }} />
+              </div>
+              <span className={use.over ? 'bar-pct over' : 'bar-pct'}>{use.text}</span>
+            </div>
+          ) : '—'}
+        </td>
         <td className="actions">
           {readOnly ? null : editing ? (
             <>
@@ -283,7 +309,7 @@ function ClientRow({ client, adminKey, onChanged, readOnly }) {
           ) : (
             <>
               <button type="button" className="ghost" onClick={startEdit} disabled={busy}>Edit</button>
-              <button type="button" className={client.enabled ? 'ghost warn-action' : 'ghost'}
+              <button type="button" className={client.enabled ? 'ghost warn-action' : 'ghost go-action'}
                 onClick={toggleEnabled} disabled={busy}>
                 {client.enabled ? 'Disable' : 'Enable'}
               </button>
@@ -354,9 +380,12 @@ export default function App() {
   return (
     <div className="console">
       <header className="masthead">
-        <div>
-          <h1 className="wordmark">Gateway<span className="dot">.</span>console</h1>
-          <div className="tagline">LLM proxy telemetry</div>
+        <div className="brand">
+          <div className="logo-tile" aria-hidden="true">G</div>
+          <div>
+            <h1 className="wordmark">Gateway<span className="dot">.</span>console</h1>
+            <div className="tagline">LLM proxy telemetry</div>
+          </div>
         </div>
         <div className="keybar">
           <input
@@ -403,19 +432,24 @@ export default function App() {
 
           <div className="rail">System</div>
           <div className="gauges">
-            <Gauge label="Requests" value={int.format(stats?.total_requests ?? 0)} sub="billable calls" />
-            <Gauge label="Spend" value={money(stats?.total_cost)} sub="all clients" />
+            <Gauge label="Requests" value={int.format(stats?.total_requests ?? 0)} sub="billable calls"
+              tone="accent" />
+            <Gauge label="Spend" value={money(stats?.total_cost)} sub="all clients" tone="amber" />
             <Gauge label="Cache hit rate" value={stats ? cacheHitRate(stats) : '—'}
-              sub={`${int.format(stats?.cache_hits ?? 0)} hit / ${int.format(stats?.cache_misses ?? 0)} miss`} />
+              sub={`${int.format(stats?.cache_hits ?? 0)} hit / ${int.format(stats?.cache_misses ?? 0)} miss`}
+              tone="lime" />
             <Gauge label="Rate-limit rejections" value={int.format(stats?.rate_limit_rejections ?? 0)}
-              sub="429 responses" warn={(stats?.rate_limit_rejections ?? 0) > 0} />
+              sub="429 responses" tone="red" warn={(stats?.rate_limit_rejections ?? 0) > 0} />
           </div>
 
           <div className="rail">Latency</div>
           <div className="gauges">
-            <Gauge label="p50" value={`${int.format(stats?.p50_millis ?? 0)} ms`} sub="median" />
-            <Gauge label="p95" value={`${int.format(stats?.p95_millis ?? 0)} ms`} sub="95th percentile" />
-            <Gauge label="p99" value={`${int.format(stats?.p99_millis ?? 0)} ms`} sub="99th percentile" />
+            <Gauge label="p50" value={`${int.format(stats?.p50_millis ?? 0)} ms`} sub="median"
+              tone="lime" dot />
+            <Gauge label="p95" value={`${int.format(stats?.p95_millis ?? 0)} ms`} sub="95th percentile"
+              tone="amber" dot />
+            <Gauge label="p99" value={`${int.format(stats?.p99_millis ?? 0)} ms`} sub="99th percentile"
+              tone="red" dot />
           </div>
 
           {authed ? (
