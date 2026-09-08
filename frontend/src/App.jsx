@@ -268,29 +268,29 @@ function ClientRow({ client, adminKey, onChanged, readOnly }) {
   return (
     <>
       <tr>
-        <td className="name">{client.name}</td>
-        <td>
+        <td className="name" data-label="Client">{client.name}</td>
+        <td data-label="Status">
           <span className={client.enabled ? 'badge on' : 'badge off'}>
             {client.enabled ? 'enabled' : 'disabled'}
           </span>
         </td>
-        <td className="num">
+        <td className="num" data-label="Rate limit">
           {editing
             ? <input className="cell-input" aria-label="Rate limit" value={rate} inputMode="numeric"
                 onChange={(e) => setRate(e.target.value)} />
             : (client.rate_limit ?? 'default')}
         </td>
-        <td className="num">
+        <td className="num" data-label="Budget">
           {editing
             ? <input className="cell-input" aria-label="Budget" value={budget} inputMode="decimal"
                 onChange={(e) => setBudget(e.target.value)} />
             : (client.budget != null ? money(client.budget) : '—')}
         </td>
-        <td className="num">{int.format(client.usage?.request_count ?? 0)}</td>
-        <td className="num">{int.format(client.usage?.total_input_tokens ?? 0)}</td>
-        <td className="num">{int.format(client.usage?.total_output_tokens ?? 0)}</td>
-        <td className="num">{money(client.usage?.total_cost)}</td>
-        <td className="num spendcap">
+        <td className="num" data-label="Requests">{int.format(client.usage?.request_count ?? 0)}</td>
+        <td className="num" data-label="Input tok">{int.format(client.usage?.total_input_tokens ?? 0)}</td>
+        <td className="num" data-label="Output tok">{int.format(client.usage?.total_output_tokens ?? 0)}</td>
+        <td className="num" data-label="Spend">{money(client.usage?.total_cost)}</td>
+        <td className="num spendcap" data-label="Spend / cap">
           {use.has ? (
             <div className="bar-wrap">
               <div className="bar-track">
@@ -300,7 +300,7 @@ function ClientRow({ client, adminKey, onChanged, readOnly }) {
             </div>
           ) : '—'}
         </td>
-        <td className="actions">
+        <td className="actions" data-label="Actions">
           {readOnly ? null : editing ? (
             <>
               <button type="button" onClick={save} disabled={busy}>Save</button>
@@ -462,6 +462,7 @@ export default function App() {
 
           <div className="rail">Clients</div>
           <div className="panel">
+            <div className="table-scroll">
             <table>
               <thead>
                 <tr>
@@ -487,6 +488,7 @@ export default function App() {
                 ) : null}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="refresh">
